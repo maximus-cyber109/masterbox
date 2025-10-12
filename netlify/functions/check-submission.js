@@ -11,70 +11,83 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
-  console.log('Getting customer info...');
+  console.log('Checking submission by order ID...');
 
   try {
-    const { authorization } = event.headers;
+    const { orderId, orderIncrementId } = JSON.parse(event.body || '{}');
     
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      console.log('No bearer token found');
+    if (!orderId && !orderIncrementId) {
       return {
-        statusCode: 401,
+        statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          error: 'No bearer token provided',
-          fallback: true 
+        body: JSON.stringify({ error: 'Order ID is required' })
+      };
+    }
+
+    const licenseCode = process.env.WEBENGAGE_LICENSE_CODE;
+    const apiKey = process.env.WEBENGAGE_API_KEY;
+
+    if (!licenseCode || !apiKey) {
+      console.log('WebEngage credentials not configured, skipping duplicate check');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ hasSubmitted: false })
+      };
+    }
+
+    // Check WebEngage for existing submission with this order ID
+    const searchQuery = orderIncrementId || orderId;
+    const apiUrl = `https://api.webengage.com/v1/accounts/${licenseCode}/users`;
+
+    console.log('Checking for order:', searchQuery);
+
+    // Search for users with this order ID in their attributes
+    const response = await axios.get(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      params: {
+        'pb_days_order_id': searchQuery
+      },
+      timeout: 10000
+    });
+
+    // If we find any users with this order ID, it's already claimed
+    if (response.data && response.data.length > 0) {
+      const existingUser = response.data[0];
+      console.log('Order already claimed by:', existingUser.userId);
+      
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          hasSubmitted: true,
+          submissionData: {
+            timestamp: existingUser.attributes?.pb_days_submission_date || new Date().toISOString(),
+            specialties: existingUser.attributes?.pb_days_specialties || 'Previously submitted',
+            count: existingUser.attributes?.pb_days_specialty_count || 'N/A',
+            order_id: searchQuery
+          }
         })
       };
     }
 
-    const token = authorization.split(' ')[1];
-    const magentoBaseUrl = process.env.MAGENTO_BASE_URL;
-
-    if (!magentoBaseUrl) {
-      throw new Error('MAGENTO_BASE_URL not configured');
-    }
-
-    console.log('Calling Magento API...');
-
-    const customerResponse = await axios.get(
-      `${magentoBaseUrl}/rest/V1/customers/me`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      }
-    );
-
-    const customer = customerResponse.data;
-    console.log('Customer found:', customer.email);
-    
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        success: true,
-        customer: {
-          id: customer.id,
-          email: customer.email,
-          firstname: customer.firstname,
-          lastname: customer.lastname
-        }
-      })
+      body: JSON.stringify({ hasSubmitted: false })
     };
 
   } catch (error) {
-    console.error('Magento API Error:', error.message);
-    
+    console.error('Check submission error:', error.message);
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({ 
-        error: 'Failed to get customer info',
-        fallback: true,
-        details: error.response?.data || error.message
+        hasSubmitted: false,
+        error: 'Could not verify submission status'
       })
     };
   }
