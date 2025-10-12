@@ -181,7 +181,7 @@ body {
     font-weight: 300;
 }
 
-/* Main App */
+/* Main App - Compact Layout */
 .app {
     max-width: 100%;
     width: 100%;
@@ -193,6 +193,7 @@ body {
     transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
 }
 
 .app.show {
@@ -206,75 +207,60 @@ body {
     }
 }
 
-/* Header */
+/* Compact Header */
 .header {
-    padding: 3rem 2rem 2.5rem;
+    padding: 1.5rem 1rem 1.25rem;
     text-align: center;
-    background: linear-gradient(180deg, var(--gray-dark) 0%, var(--bg-black) 100%);
+    background: var(--bg-black);
     border-bottom: 1px solid var(--glass-border);
     position: relative;
-    overflow: hidden;
 }
 
 .header::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
-    animation: header-glow 6s ease-in-out infinite;
-}
-
-@keyframes header-glow {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(10%, 10%) scale(1.1); }
+    display: none;
 }
 
 .title {
-    font-size: 2.75rem;
+    font-size: 2rem;
     font-weight: 900;
     color: var(--white);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
     letter-spacing: -0.03em;
     position: relative;
     z-index: 1;
-    text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
 }
 
 .dates {
     color: var(--gray-mid);
-    font-size: 0.9375rem;
-    margin-bottom: 2rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
     font-weight: 500;
     position: relative;
     z-index: 1;
 }
 
 .divider {
-    width: 60px;
-    height: 3px;
+    width: 50px;
+    height: 2px;
     background: linear-gradient(90deg, transparent 0%, var(--white) 50%, transparent 100%);
     margin: 0 auto;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     position: relative;
     z-index: 1;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
 .subtitle {
-    font-size: 1.375rem;
+    font-size: 1.125rem;
     font-weight: 700;
     color: var(--white);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.375rem;
     position: relative;
     z-index: 1;
 }
 
 .description {
     color: var(--gray-mid);
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     font-weight: 400;
     position: relative;
     z-index: 1;
@@ -440,12 +426,12 @@ body {
     animation: spin 1s linear infinite;
 }
 
-/* Order Card */
+/* Compact Order Card */
 .order-card {
-    margin: 2rem 1.5rem;
+    margin: 1rem 1rem;
     background: var(--white);
-    border-radius: 20px;
-    padding: 1.75rem;
+    border-radius: 16px;
+    padding: 1.25rem;
     display: none;
     box-shadow: 
         var(--shadow-md),
@@ -453,6 +439,7 @@ body {
     animation: card-appear 0.8s cubic-bezier(0.4, 0, 0.2, 1);
     align-items: center;
     justify-content: space-between;
+    gap: 1rem;
 }
 
 .order-card.show {
@@ -469,16 +456,16 @@ body {
 }
 
 .welcome-section h3 {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     font-weight: 800;
     color: var(--bg-black);
     letter-spacing: -0.02em;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.125rem;
 }
 
 .welcome-subtitle {
     color: var(--gray-mid);
-    font-size: 0.9375rem;
+    font-size: 0.8125rem;
     font-weight: 500;
     margin: 0;
 }
@@ -486,50 +473,51 @@ body {
 .badge {
     background: var(--bg-black);
     color: var(--white);
-    padding: 0.625rem 1.25rem;
+    padding: 0.5rem 1rem;
     border-radius: 50px;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     font-weight: 700;
     width: fit-content;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
-/* Content Area */
+/* Content Area - Compact */
 .content {
     flex: 1;
-    padding: 0 1.5rem;
+    padding: 0 1rem;
     display: flex;
     flex-direction: column;
 }
 
 .form-section {
-    padding: 2rem 0;
+    padding: 1rem 0;
 }
 
 .form-section h2 {
     text-align: center;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 800;
     color: var(--white);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     letter-spacing: -0.02em;
 }
 
 .form-section p {
     text-align: center;
     color: var(--gray-mid);
-    font-size: 0.9375rem;
-    margin-bottom: 2.5rem;
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
     line-height: 1.5;
 }
 
 .counter {
     text-align: center;
     color: var(--gray-mid);
-    font-size: 0.9375rem;
-    margin-bottom: 2.5rem;
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
     font-weight: 600;
     transition: all 0.3s ease;
 }
@@ -540,25 +528,25 @@ body {
     text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 }
 
-/* Specialty Grid */
+/* Compact Specialty Grid */
 .grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    margin-bottom: 2.5rem;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
 }
 
 .card {
     background: var(--glass-bg);
     backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    padding: 1.5rem;
+    border-radius: 16px;
+    padding: 1.125rem 0.875rem;
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     text-align: center;
-    min-height: 120px;
+    min-height: 90px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -573,14 +561,14 @@ body {
     right: 0;
     bottom: 0;
     background: radial-gradient(circle at top left, rgba(255,255,255,0.1) 0%, transparent 50%);
-    border-radius: 20px;
+    border-radius: 16px;
     opacity: 0;
     transition: opacity 0.4s ease;
 }
 
 .card:hover {
     border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-5px);
+    transform: translateY(-3px);
     box-shadow: var(--shadow-md);
 }
 
@@ -592,7 +580,7 @@ body {
     background: var(--white);
     border-color: var(--white);
     color: var(--bg-black);
-    transform: translateY(-8px) scale(1.02);
+    transform: translateY(-5px) scale(1.02);
     box-shadow: 
         0 12px 40px rgba(255, 255, 255, 0.25),
         0 0 0 4px rgba(255, 255, 255, 0.1);
@@ -612,20 +600,20 @@ body {
 }
 
 .specialty-label {
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     font-weight: 700;
-    line-height: 1.3;
+    line-height: 1.2;
     letter-spacing: -0.01em;
     text-align: center;
-    padding: 0 0.5rem;
+    padding: 0 0.25rem;
 }
 
 .dot {
     position: absolute;
-    top: -8px;
-    right: -8px;
-    width: 22px;
-    height: 22px;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
     background: transparent;
@@ -645,7 +633,7 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     color: var(--white);
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 800;
     animation: check-appear 0.3s ease;
 }
@@ -657,7 +645,7 @@ body {
 
 /* Result Screens */
 .result {
-    padding: 3rem 0;
+    padding: 2rem 0;
     text-align: center;
     display: none;
 }
@@ -673,14 +661,14 @@ body {
 }
 
 .result-icon {
-    width: 100px;
-    height: 100px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.5rem;
-    margin: 0 auto 2rem;
+    font-size: 2rem;
+    margin: 0 auto 1.5rem;
     animation: result-pop 1s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     box-shadow: var(--shadow-lg);
 }
@@ -697,17 +685,17 @@ body {
 }
 
 .result h2 {
-    font-size: 1.875rem;
+    font-size: 1.5rem;
     font-weight: 800;
     color: var(--white);
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     letter-spacing: -0.02em;
 }
 
 .result p {
     color: var(--gray-mid);
-    font-size: 1.0625rem;
-    margin-bottom: 2rem;
+    font-size: 0.9375rem;
+    margin-bottom: 1.5rem;
     line-height: 1.6;
     max-width: 320px;
     margin-left: auto;
@@ -718,10 +706,10 @@ body {
     background: var(--glass-bg);
     backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
-    padding: 1.5rem;
-    border-radius: 16px;
+    padding: 1.25rem;
+    border-radius: 14px;
     color: var(--gray-mid);
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     text-align: left;
     max-width: 340px;
     margin: 0 auto;
@@ -729,8 +717,8 @@ body {
 }
 
 .info p {
-    margin: 0.75rem 0;
-    font-size: 0.875rem;
+    margin: 0.625rem 0;
+    font-size: 0.8125rem;
 }
 
 .info p strong {
@@ -738,28 +726,27 @@ body {
     font-weight: 700;
 }
 
-/* Submit Button */
+/* Compact Submit Button */
 .submit-area {
-    padding: 2rem 1.5rem 2.5rem;
+    padding: 1.5rem 1rem 2rem;
     border-top: 1px solid var(--glass-border);
     margin-top: auto;
-    background: linear-gradient(180deg, transparent 0%, rgba(10, 10, 10, 0.5) 100%);
 }
 
 .submit-btn {
     width: 100%;
-    height: 64px;
+    height: 56px;
     background: var(--white);
     color: var(--bg-black);
     border: none;
-    border-radius: 32px;
-    font-size: 1.125rem;
+    border-radius: 28px;
+    font-size: 1rem;
     font-weight: 800;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
+    gap: 0.625rem;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -808,8 +795,8 @@ body {
 
 .submit-loading {
     display: none;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border: 3px solid rgba(0, 0, 0, 0.2);
     border-top-color: var(--bg-black);
     border-radius: 50%;
@@ -909,9 +896,9 @@ body {
     backdrop-filter: blur(30px);
     border: 1px solid var(--glass-border);
     border-radius: 24px;
-    padding: 2.5rem 2rem;
+    padding: 2rem 1.5rem;
     width: 100%;
-    max-width: 380px;
+    max-width: 360px;
     text-align: center;
     box-shadow: 
         0 25px 50px rgba(0, 0, 0, 0.8),
@@ -933,9 +920,9 @@ body {
 /* MasterBox Container with Glow */
 .masterbox-container {
     position: relative;
-    width: 200px;
-    height: 200px;
-    margin: 0 auto 2rem;
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 1.5rem;
     perspective: 800px;
 }
 
@@ -945,8 +932,8 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 220px;
-    height: 220px;
+    width: 200px;
+    height: 200px;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
     animation: glow-ring-pulse 3s ease-in-out infinite;
@@ -964,10 +951,10 @@ body {
     }
 }
 
-/* Tilting MasterBox (Simple Rotation) */
+/* Tilting MasterBox */
 .masterbox-tilting {
-    width: 200px;
-    height: 200px;
+    width: 180px;
+    height: 180px;
     position: relative;
     transform-style: preserve-3d;
     animation: tilt-box 4s ease-in-out infinite;
@@ -1007,46 +994,46 @@ body {
 
 /* Modal Text */
 .success-title {
-    font-size: 1.875rem;
+    font-size: 1.625rem;
     font-weight: 800;
     color: var(--white);
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     letter-spacing: -0.02em;
     text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 }
 
 .success-desc {
     color: var(--gray-mid);
-    font-size: 1rem;
-    margin-bottom: 1.5rem;
+    font-size: 0.9375rem;
+    margin-bottom: 1.25rem;
     line-height: 1.6;
 }
 
 .success-badge-modal {
     background: var(--white);
     color: var(--bg-black);
-    padding: 0.875rem 1.75rem;
+    padding: 0.75rem 1.5rem;
     border-radius: 50px;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 800;
     display: inline-block;
     box-shadow: 0 8px 30px rgba(255, 255, 255, 0.3);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
 /* Modal Action Buttons */
 .modal-actions {
     display: flex;
     flex-direction: column;
-    gap: 0.875rem;
+    gap: 0.75rem;
     width: 100%;
 }
 
 .modal-action-btn {
     width: 100%;
-    height: 52px;
+    height: 50px;
     border: none;
     border-radius: 14px;
     font-size: 0.9375rem;
@@ -1104,31 +1091,37 @@ body {
 /* Test Badge */
 .test-badge {
     position: fixed;
-    top: 1.5rem;
-    right: 1.5rem;
+    top: 1rem;
+    right: 1rem;
     background: var(--white);
     color: var(--bg-black);
-    padding: 0.5rem 1rem;
+    padding: 0.375rem 0.875rem;
     border-radius: 50px;
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 800;
     z-index: 9999;
     text-transform: uppercase;
     letter-spacing: 1px;
     box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
-    animation: badge-pulse 2s ease-in-out infinite;
 }
 
-@keyframes badge-pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-}
-
-/* Responsive for Modal */
+/* Responsive */
 @media (max-width: 375px) {
-    .success-modal-content {
-        max-width: calc(100% - 2rem);
-        padding: 2rem 1.5rem;
+    .title {
+        font-size: 1.875rem;
+    }
+    
+    .grid {
+        gap: 0.625rem;
+    }
+    
+    .card {
+        padding: 1rem 0.75rem;
+        min-height: 85px;
+    }
+    
+    .specialty-label {
+        font-size: 0.8125rem;
     }
     
     .masterbox-container {
@@ -1150,83 +1143,9 @@ body {
         font-size: 1.5rem;
     }
     
-    .success-desc {
-        font-size: 0.9375rem;
-    }
-    
     .modal-action-btn {
         height: 48px;
         font-size: 0.875rem;
-    }
-    
-    .grid {
-        gap: 0.875rem;
-    }
-    
-    .card {
-        padding: 1.25rem;
-        min-height: 110px;
-    }
-    
-    .specialty-label {
-        font-size: 0.875rem;
-    }
-}
-
-@media (max-height: 700px) {
-    .success-modal-content {
-        padding: 1.5rem;
-    }
-    
-    .masterbox-container {
-        width: 140px;
-        height: 140px;
-        margin-bottom: 1.5rem;
-    }
-    
-    .masterbox-tilting {
-        width: 140px;
-        height: 140px;
-    }
-    
-    .box-glow-ring {
-        width: 160px;
-        height: 160px;
-    }
-    
-    .success-badge-modal {
-        margin-bottom: 1.5rem;
-        padding: 0.75rem 1.5rem;
-    }
-    
-    .loading-content h1 {
-        font-size: 2rem;
-    }
-    
-    .form-section {
-        padding: 1.5rem 0;
-    }
-}
-
-@media (max-height: 600px) {
-    .loader-3d {
-        width: 120px;
-        height: 120px;
-        margin-bottom: 1.5rem;
-    }
-    
-    .shape-morph {
-        width: 100px;
-        height: 100px;
-    }
-    
-    .loading-content h1 {
-        font-size: 1.75rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .loading-content p {
-        font-size: 1rem;
     }
 }
 
