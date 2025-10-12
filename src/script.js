@@ -1,4 +1,9 @@
-// Simple, clean implementation
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 PB DAYS Premium Experience Starting...');
+    new PBDaysApp();
+});
+
 class PBDaysApp {
     constructor() {
         this.selectedSpecialties = new Set();
@@ -7,155 +12,170 @@ class PBDaysApp {
         this.isSubmitting = false;
         this.isTestMode = false;
         
-        this.init();
+        this.initialize();
     }
     
-    init() {
-        console.log('🚀 PB DAYS Starting...');
-        
-        // Start wave animation after 3.5 seconds
-        setTimeout(() => {
-            this.hideLoadingScreen();
-            this.startApp();
-        }, 3500);
-    }
-    
-    hideLoadingScreen() {
-        const loading = document.getElementById('loadingScreen');
-        const app = document.getElementById('app');
-        
-        if (loading) loading.classList.add('fade-out');
-        if (app) app.classList.add('show');
-    }
-    
-    startApp() {
+    initialize() {
         this.setupEventListeners();
-        this.loadSavedSelections();
-        this.initializeAuth();
+        this.startWaveAnimation();
     }
     
     setupEventListeners() {
-        // Email form
+        // Email form submission
         const emailForm = document.getElementById('emailForm');
         if (emailForm) {
             emailForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this.handleEmailSubmit();
+                this.handleEmailSubmission();
             });
         }
         
-        // Specialty cards
-        const cards = document.querySelectorAll('.card');
-        cards.forEach(card => {
+        // Specialty selection
+        const specialtyCards = document.querySelectorAll('.card');
+        specialtyCards.forEach(card => {
             card.addEventListener('click', () => {
                 this.toggleCard(card);
             });
         });
         
         // Submit button
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn) {
-            submitBtn.addEventListener('click', () => {
-                this.handleSubmit();
+        const submitButton = document.getElementById('submitBtn');
+        if (submitButton) {
+            submitButton.addEventListener('click', () => {
+                this.handleFinalSubmission();
             });
         }
+        
+        // Load any saved selections
+        this.loadSavedSelections();
     }
     
-    async initializeAuth() {
-        console.log('⚙️ Checking authentication...');
+    startWaveAnimation() {
+        setTimeout(() => {
+            const waveContainer = document.getElementById('loadingScreen');
+            const mainApp = document.getElementById('app');
+            
+            if (waveContainer && mainApp) {
+                waveContainer.classList.add('fade-out');
+                
+                setTimeout(() => {
+                    waveContainer.style.display = 'none';
+                    mainApp.classList.add('show');
+                    this.initializeApplication();
+                }, 1500);
+            }
+        }, 4000);
+    }
+    
+    async initializeApplication() {
+        console.log('⚙️ Initializing application...');
         this.showAppLoading();
         
         try {
-            await this.getCustomerInfo();
+            await this.getCustomerInformation();
             
             if (this.customerData) {
                 console.log('✅ Customer found:', this.customerData.email);
                 
                 if (this.customerData.email.includes('-forcefetch')) {
-                    this.enableTestMode();
-                    this.createMockOrder();
-                    this.showOrderCard();
+                    this.activateTestMode();
+                    this.generateMockOrder();
+                    this.displayOrderInfo();
                 } else {
-                    await this.fetchOrder(this.customerData.email);
+                    await this.fetchCustomerOrder(this.customerData.email);
                     if (this.orderData) {
-                        this.showOrderCard();
-                        const hasSubmitted = await this.checkSubmission();
-                        if (hasSubmitted) {
-                            this.showAlreadySubmitted();
+                        this.displayOrderInfo();
+                        
+                        const alreadySubmitted = await this.checkExistingSubmission();
+                        if (alreadySubmitted) {
+                            this.showAlreadySubmittedState();
                             return;
                         }
                     }
                 }
             } else {
-                throw new Error('No customer data');
+                throw new Error('No customer data available');
             }
         } catch (error) {
-            console.log('ℹ️ No auth, showing email modal');
-            this.showEmailModal();
+            console.log('ℹ️ No customer session, showing email modal');
+            this.showEmailInputModal();
             return;
         }
         
         this.hideAppLoading();
-        this.updateUI();
+        this.updateUserInterface();
     }
     
-    enableTestMode() {
-        console.log('🧪 TEST MODE');
+    activateTestMode() {
+        console.log('🧪 TEST MODE ACTIVATED');
         this.isTestMode = true;
         
-        const badge = document.createElement('div');
-        badge.className = 'test-badge';
-        badge.textContent = 'TEST';
-        document.body.appendChild(badge);
+        const testBadge = document.createElement('div');
+        testBadge.className = 'test-badge';
+        testBadge.textContent = 'TEST MODE';
+        document.body.appendChild(testBadge);
     }
     
-    createMockOrder() {
+    generateMockOrder() {
         const cleanEmail = this.customerData.email.replace('-forcefetch', '');
         this.customerData.email = cleanEmail;
         
         this.orderData = {
             id: `TEST_${Date.now()}`,
             increment_id: `TEST-${Math.floor(Math.random() * 10000)}`,
-            grand_total: '0.00'
+            grand_total: '0.00',
+            status: 'test'
         };
     }
     
     showAppLoading() {
-        const loading = document.getElementById('appLoading');
-        if (loading) loading.style.display = 'flex';
+        const loadingElement = document.getElementById('appLoading');
+        if (loadingElement) {
+            loadingElement.style.display = 'flex';
+        }
     }
     
     hideAppLoading() {
-        const loading = document.getElementById('appLoading');
-        if (loading) loading.style.display = 'none';
+        const loadingElement = document.getElementById('appLoading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
     }
     
-    showEmailModal() {
+    showEmailInputModal() {
         this.hideAppLoading();
         const modal = document.getElementById('emailModal');
-        if (modal) modal.classList.add('show');
+        if (modal) {
+            modal.classList.add('show');
+        }
     }
     
-    async handleEmailSubmit() {
-        const input = document.getElementById('emailInput');
-        const loading = document.getElementById('emailLoading');
-        const text = document.getElementById('emailText');
+    async handleEmailSubmission() {
+        const emailInput = document.getElementById('emailInput');
+        const fetchLoader = document.getElementById('emailLoading');
+        const fetchLabel = document.getElementById('emailText');
         
-        if (!input) return;
+        if (!emailInput) return;
         
-        const email = input.value.trim();
+        const email = emailInput.value.trim();
+        
         if (!email) {
-            alert('Please enter your email');
+            this.showUserMessage('Please enter your email address');
             return;
         }
         
-        if (loading) loading.style.display = 'inline-block';
-        if (text) text.textContent = 'Processing...';
+        if (!this.isValidEmailFormat(email.replace('-forcefetch', ''))) {
+            this.showUserMessage('Please enter a valid email address');
+            return;
+        }
+        
+        if (fetchLoader) fetchLoader.style.display = 'inline-block';
+        if (fetchLabel) fetchLabel.textContent = 'Processing...';
         
         try {
             if (email.includes('-forcefetch')) {
-                console.log('🧪 Test mode');
-                this.enableTestMode();
+                console.log('🧪 Test mode detected from email');
+                this.activateTestMode();
                 
                 this.customerData = {
                     id: `TEST_${Date.now()}`,
@@ -164,97 +184,107 @@ class PBDaysApp {
                     lastname: 'User'
                 };
                 
-                this.createMockOrder();
+                this.generateMockOrder();
                 this.hideEmailModal();
-                this.showOrderCard();
-                this.updateUI();
+                this.displayOrderInfo();
+                this.updateUserInterface();
                 
             } else {
-                await this.fetchOrder(email);
+                await this.fetchCustomerOrder(email);
                 
                 if (this.customerData && this.orderData) {
                     this.hideEmailModal();
-                    this.showOrderCard();
+                    this.displayOrderInfo();
                     
-                    const hasSubmitted = await this.checkSubmission();
-                    if (hasSubmitted) {
-                        this.showAlreadySubmitted();
+                    const alreadySubmitted = await this.checkExistingSubmission();
+                    if (alreadySubmitted) {
+                        this.showAlreadySubmittedState();
                     } else {
-                        this.updateUI();
+                        this.updateUserInterface();
                     }
                 } else {
-                    throw new Error('No orders found');
+                    throw new Error('No recent orders found for this email');
                 }
             }
         } catch (error) {
-            console.error('Error:', error);
-            alert('Could not find orders. Add "-forcefetch" to email for testing.');
+            console.error('❌ Email processing failed:', error);
+            this.showUserMessage('Could not find recent orders. Add "-forcefetch" to your email for testing mode.');
         } finally {
-            if (loading) loading.style.display = 'none';
-            if (text) text.textContent = 'Fetch My Order';
+            if (fetchLoader) fetchLoader.style.display = 'none';
+            if (fetchLabel) fetchLabel.textContent = 'Continue';
         }
     }
     
     hideEmailModal() {
         const modal = document.getElementById('emailModal');
-        if (modal) modal.classList.remove('show');
+        if (modal) {
+            modal.classList.remove('show');
+        }
     }
     
-    showOrderCard() {
+    displayOrderInfo() {
         if (!this.customerData || !this.orderData) return;
         
-        const customerName = document.getElementById('customerName');
-        const orderNumber = document.getElementById('orderNumber');
-        const orderAmount = document.getElementById('orderAmount');
+        const welcomeElement = document.getElementById('customerName');
         const orderCard = document.getElementById('orderCard');
         
-        if (customerName) customerName.textContent = `Welcome, ${this.customerData.firstname}!`;
-        
-        if (this.isTestMode) {
-            if (orderNumber) orderNumber.textContent = `${this.orderData.increment_id} (TEST)`;
-            if (orderAmount) orderAmount.textContent = 'TEST MODE';
-        } else {
-            if (orderNumber) orderNumber.textContent = `Order #${this.orderData.increment_id}`;
-            if (orderAmount) orderAmount.textContent = `₹${parseFloat(this.orderData.grand_total).toLocaleString()}`;
+        if (welcomeElement) {
+            welcomeElement.textContent = `Welcome, ${this.customerData.firstname}!`;
         }
         
-        if (orderCard) orderCard.classList.add('show');
+        if (orderCard) {
+            orderCard.classList.add('show');
+        }
     }
     
-    async getCustomerInfo() {
-        const token = this.getBearerToken();
-        if (!token) throw new Error('No token');
+    async getCustomerInformation() {
+        const bearerToken = this.findBearerToken();
+        
+        if (!bearerToken) {
+            throw new Error('No authentication token available');
+        }
+        
+        console.log('🔑 Attempting customer authentication...');
         
         const response = await fetch('/.netlify/functions/get-customer-info', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${bearerToken}`
             }
         });
         
         const data = await response.json();
-        if (data.fallback) throw new Error('API unavailable');
+        
+        if (data.fallback || !data.success) {
+            throw new Error('Customer API unavailable');
+        }
         
         this.customerData = data.customer;
     }
     
-    getBearerToken() {
+    findBearerToken() {
         try {
             if (window.parent !== window) {
-                const token = window.parent.customerToken || window.parent.localStorage?.getItem('customerToken');
+                const token = window.parent.customerToken || 
+                             window.parent.localStorage?.getItem('customerToken');
                 if (token) return token;
             }
-        } catch (e) {}
+        } catch (error) {
+            // CORS error expected
+        }
         
-        const localToken = localStorage.getItem('customerToken') || sessionStorage.getItem('customerToken');
+        const localToken = localStorage.getItem('customerToken') || 
+                          sessionStorage.getItem('customerToken');
         if (localToken) return localToken;
         
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('token');
     }
     
-    async fetchOrder(email) {
+    async fetchCustomerOrder(email) {
+        console.log('📦 Fetching latest order for:', email);
+        
         const response = await fetch('/.netlify/functions/get-latest-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -262,14 +292,23 @@ class PBDaysApp {
         });
         
         const data = await response.json();
-        if (!data.success) throw new Error(data.error);
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Order fetch failed');
+        }
         
         this.customerData = data.customer;
         this.orderData = data.order;
+        
+        console.log('📦 Order retrieved:', this.orderData.increment_id);
     }
     
-    async checkSubmission() {
-        if (this.isTestMode) return false;
+    async checkExistingSubmission() {
+        if (this.isTestMode) {
+            console.log('🧪 Test mode - skipping duplicate check');
+            return false;
+        }
+        
         if (!this.orderData) return false;
         
         try {
@@ -285,9 +324,9 @@ class PBDaysApp {
             const data = await response.json();
             
             if (data.hasSubmitted) {
-                const info = document.getElementById('submissionInfo');
-                if (info) {
-                    info.innerHTML = `
+                const submissionInfoElement = document.getElementById('submissionInfo');
+                if (submissionInfoElement) {
+                    submissionInfoElement.innerHTML = `
                         <p><strong>Order:</strong> #${this.orderData.increment_id}</p>
                         <p><strong>Submitted:</strong> ${new Date(data.submissionData.timestamp).toLocaleDateString()}</p>
                         <p><strong>Specialties:</strong> ${data.submissionData.specialties}</p>
@@ -298,6 +337,7 @@ class PBDaysApp {
             
             return false;
         } catch (error) {
+            console.log('⚠️ Could not verify previous submission');
             return false;
         }
     }
@@ -305,184 +345,310 @@ class PBDaysApp {
     toggleCard(card) {
         if (this.isSubmitting) return;
         
-        const specialty = card.dataset.specialty;
+        const specialtyValue = card.dataset.specialty;
         
         if (card.classList.contains('selected')) {
             card.classList.remove('selected');
-            this.selectedSpecialties.delete(specialty);
+            this.selectedSpecialties.delete(specialtyValue);
         } else {
             card.classList.add('selected');
-            this.selectedSpecialties.add(specialty);
+            this.selectedSpecialties.add(specialtyValue);
         }
         
-        this.updateCounter();
-        this.updateSubmitBtn();
-        this.saveSelections();
+        this.updateProgressIndicator();
+        this.updateSubmitButtonState();
+        this.saveCurrentSelections();
         
-        if (navigator.vibrate) navigator.vibrate(10);
+        if (navigator.vibrate) {
+            navigator.vibrate(10);
+        }
     }
     
-    updateCounter() {
-        const counter = document.getElementById('counter');
-        if (!counter) return;
-        
+    updateProgressIndicator() {
         const count = this.selectedSpecialties.size;
+        const progressText = document.getElementById('counter');
         
-        if (count === 0) {
-            counter.textContent = 'No specialties selected';
-            counter.classList.remove('active');
-        } else if (count === 1) {
-            counter.textContent = '1 specialty selected';
-            counter.classList.add('active');
-        } else {
-            counter.textContent = `${count} specialties selected`;
-            counter.classList.add('active');
+        if (progressText) {
+            if (count === 0) {
+                progressText.textContent = 'No specialties selected';
+                progressText.classList.remove('active');
+            } else if (count === 1) {
+                progressText.textContent = '1 specialty selected';
+                progressText.classList.add('active');
+            } else {
+                progressText.textContent = `${count} specialties selected`;
+                progressText.classList.add('active');
+            }
         }
     }
     
-    updateSubmitBtn() {
-        const btn = document.getElementById('submitBtn');
-        const text = document.getElementById('submitText');
-        if (!btn || !text) return;
+    updateSubmitButtonState() {
+        const submitButton = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        
+        if (!submitButton || !submitText) return;
         
         if (this.selectedSpecialties.size === 0) {
-            btn.disabled = true;
-            text.textContent = 'Select Specialties';
+            submitButton.disabled = true;
+            submitText.textContent = 'Select Specialties';
         } else {
-            btn.disabled = false;
-            text.textContent = this.isTestMode ? 'Test Claim' : 'Claim My MasterBox';
+            submitButton.disabled = false;
+            submitText.textContent = this.isTestMode ? 'Test Claim' : 'Claim My MasterBox';
         }
     }
     
-    async handleSubmit() {
+    async handleFinalSubmission() {
         if (this.isSubmitting || this.selectedSpecialties.size === 0) return;
+        
         if (!this.customerData || !this.orderData) {
-            alert('Order info not available');
+            this.showUserMessage('Order information not available');
             return;
         }
         
         this.isSubmitting = true;
-        this.showSubmitLoading();
+        this.showSubmissionLoading();
         
         try {
-            const specialties = Array.from(this.selectedSpecialties);
-            const data = {
+            const specialtiesArray = Array.from(this.selectedSpecialties);
+            
+            const submissionPayload = {
                 email: this.customerData.email,
                 firstname: this.customerData.firstname,
                 lastname: this.customerData.lastname,
                 customerId: this.customerData.id,
-                specialties: specialties,
+                specialties: specialtiesArray,
                 orderId: this.orderData.increment_id,
                 orderEntityId: this.orderData.id,
                 orderAmount: this.orderData.grand_total,
                 testMode: this.isTestMode
             };
             
+            console.log('📤 Submitting MasterBox claim...');
+            
             const response = await fetch('/.netlify/functions/submit-specialties', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(submissionPayload)
             });
             
             const result = await response.json();
             
             if (response.status === 409) {
-                alert('Order already claimed MasterBox');
-                this.showAlreadySubmitted();
+                this.showUserMessage('This order has already claimed its MasterBox');
+                this.showAlreadySubmittedState();
                 return;
             }
             
             if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Submission failed');
+                throw new Error(result.error || `Server error: ${response.status}`);
             }
             
-            console.log('✅ Success!');
-            this.clearSelections();
-            this.showSuccess();
+            console.log('✅ MasterBox claimed successfully!');
+            this.clearStoredSelections();
+            this.showSuccessState();
             
         } catch (error) {
-            console.error('❌ Failed:', error);
-            alert('Error claiming MasterBox. Please try again.');
+            console.error('❌ Submission failed:', error);
+            this.showUserMessage('Failed to claim MasterBox. Please try again.');
         } finally {
             this.isSubmitting = false;
-            this.hideSubmitLoading();
+            this.hideSubmissionLoading();
         }
     }
     
-    showSubmitLoading() {
-        const btn = document.getElementById('submitBtn');
-        const loading = document.getElementById('submitLoading');
-        const text = document.getElementById('submitText');
+    showSubmissionLoading() {
+        const submitButton = document.getElementById('submitBtn');
+        const submitLoader = document.getElementById('submitLoading');
+        const submitText = document.getElementById('submitText');
         
-        if (btn) btn.disabled = true;
-        if (loading) loading.style.display = 'inline-block';
-        if (text) text.textContent = 'Processing...';
+        if (submitButton) submitButton.disabled = true;
+        if (submitLoader) submitLoader.style.display = 'inline-block';
+        if (submitText) submitText.textContent = 'Processing...';
     }
     
-    hideSubmitLoading() {
-        const loading = document.getElementById('submitLoading');
-        if (loading) loading.style.display = 'none';
-        this.updateSubmitBtn();
+    hideSubmissionLoading() {
+        const submitLoader = document.getElementById('submitLoading');
+        if (submitLoader) submitLoader.style.display = 'none';
+        this.updateSubmitButtonState();
     }
     
-    showAlreadySubmitted() {
-        const form = document.getElementById('formSection');
-        const submit = document.getElementById('submitArea');
-        const already = document.getElementById('alreadySubmitted');
+    showAlreadySubmittedState() {
+        const specialtySection = document.getElementById('formSection');
+        const submitArea = document.getElementById('submitArea');
+        const alreadySubmittedState = document.getElementById('alreadySubmitted');
         
-        if (form) form.style.display = 'none';
-        if (submit) submit.style.display = 'none';
-        if (already) already.classList.add('show');
+        if (specialtySection) specialtySection.style.display = 'none';
+        if (submitArea) submitArea.style.display = 'none';
+        if (alreadySubmittedState) alreadySubmittedState.classList.add('show');
     }
     
-    showSuccess() {
-        const form = document.getElementById('formSection');
-        const submit = document.getElementById('submitArea');
-        const success = document.getElementById('success');
+    showSuccessState() {
+        const specialtySection = document.getElementById('formSection');
+        const submitArea = document.getElementById('submitArea');
+        const successState = document.getElementById('success');
         
-        if (form) form.style.display = 'none';
-        if (submit) submit.style.display = 'none';
-        if (success) success.classList.add('show');
+        if (specialtySection) specialtySection.style.display = 'none';
+        if (submitArea) submitArea.style.display = 'none';
+        if (successState) successState.classList.add('show');
+        
+        // Initialize 3D box and buttons
+        setTimeout(() => {
+            this.init3DBox();
+            this.setupShareButton();
+            this.setupReturnButton();
+        }, 300);
     }
     
-    saveSelections() {
+    // 3D Box Interaction
+    init3DBox() {
+        const box = document.getElementById('masterbox3D');
+        if (!box) return;
+
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let currentRotationX = 0;
+        let currentRotationY = 0;
+
+        const handleDragStart = (e) => {
+            isDragging = true;
+            box.style.animation = 'none';
+            
+            if (e.type === 'mousedown') {
+                startX = e.clientX;
+                startY = e.clientY;
+            } else {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            }
+            
+            e.preventDefault();
+        };
+
+        const handleDragMove = (e) => {
+            if (!isDragging) return;
+            
+            let currentX, currentY;
+            if (e.type === 'mousemove') {
+                currentX = e.clientX;
+                currentY = e.clientY;
+            } else {
+                currentX = e.touches[0].clientX;
+                currentY = e.touches[0].clientY;
+            }
+            
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+            
+            currentRotationY += deltaX * 0.5;
+            currentRotationX -= deltaY * 0.5;
+            
+            box.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+            
+            startX = currentX;
+            startY = currentY;
+            
+            e.preventDefault();
+        };
+
+        const handleDragEnd = () => {
+            isDragging = false;
+        };
+
+        box.addEventListener('mousedown', handleDragStart);
+        box.addEventListener('touchstart', handleDragStart);
+        
+        document.addEventListener('mousemove', handleDragMove);
+        document.addEventListener('touchmove', handleDragMove);
+        
+        document.addEventListener('mouseup', handleDragEnd);
+        document.addEventListener('touchend', handleDragEnd);
+
+        // Auto-spin on load
+        setTimeout(() => {
+            box.classList.add('spinning');
+            setTimeout(() => {
+                box.classList.remove('spinning');
+            }, 2000);
+        }, 500);
+    }
+
+    // Share to WhatsApp
+    setupShareButton() {
+        const shareBtn = document.getElementById('shareBtn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => {
+                const message = encodeURIComponent(
+                    "🎁 I just claimed my Custom MasterBox from PB DAYS!\n\n" +
+                    "Get yours too during October 15-17.\n\n" +
+                    "Visit: https://pinkblue.in"
+                );
+                
+                const whatsappUrl = `https://wa.me/?text=${message}`;
+                window.location.href = whatsappUrl;
+            });
+        }
+    }
+
+    // Return to PinkBlue
+    setupReturnButton() {
+        const returnBtn = document.getElementById('returnBtn');
+        if (returnBtn) {
+            returnBtn.addEventListener('click', () => {
+                window.location.href = 'https://pinkblue.in';
+            });
+        }
+    }
+    
+    saveCurrentSelections() {
         try {
             const selections = Array.from(this.selectedSpecialties);
-            localStorage.setItem('pb_days_selections', JSON.stringify(selections));
-        } catch (error) {}
+            localStorage.setItem('pb_days_specialty_selections', JSON.stringify(selections));
+        } catch (error) {
+            console.log('⚠️ Could not save selections to storage');
+        }
     }
     
     loadSavedSelections() {
         try {
-            const saved = localStorage.getItem('pb_days_selections');
+            const saved = localStorage.getItem('pb_days_specialty_selections');
             if (saved) {
                 const selections = JSON.parse(saved);
-                selections.forEach(specialty => {
-                    const card = document.querySelector(`[data-specialty="${specialty}"]`);
-                    if (card) {
-                        card.classList.add('selected');
-                        this.selectedSpecialties.add(specialty);
+                selections.forEach(specialtyValue => {
+                    const cardElement = document.querySelector(`[data-specialty="${specialtyValue}"]`);
+                    if (cardElement) {
+                        this.selectedSpecialties.add(specialtyValue);
+                        cardElement.classList.add('selected');
                     }
                 });
-                this.updateCounter();
-                this.updateSubmitBtn();
+                this.updateProgressIndicator();
+                this.updateSubmitButtonState();
+                console.log('📋 Restored previous specialty selections');
             }
-        } catch (error) {}
+        } catch (error) {
+            console.log('⚠️ Could not load saved selections');
+        }
     }
     
-    clearSelections() {
+    clearStoredSelections() {
         try {
-            localStorage.removeItem('pb_days_selections');
-        } catch (error) {}
+            localStorage.removeItem('pb_days_specialty_selections');
+        } catch (error) {
+            // Not critical
+        }
     }
     
-    updateUI() {
-        this.updateCounter();
-        this.updateSubmitBtn();
+    updateUserInterface() {
+        this.updateProgressIndicator();
+        this.updateSubmitButtonState();
+    }
+    
+    isValidEmailFormat(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+    
+    showUserMessage(message) {
+        alert(message);
     }
 }
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    new PBDaysApp();
-});
