@@ -19,8 +19,8 @@
 }
 
 html, body {
-    margin: 0 !important;
-    padding: 0 !important;
+    margin: 0;
+    padding: 0;
     height: 100%;
     overflow-x: hidden;
 }
@@ -34,7 +34,7 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Enhanced Loading Screen with Circular Progress */
+/* Loading Screen with 2-Second Circular Progress */
 .loading-screen {
     position: fixed;
     top: 0;
@@ -64,7 +64,7 @@ body {
     position: relative;
 }
 
-/* Circular Progress Fill */
+/* Circular Progress Fill - 2 Seconds */
 .loader-3d::after {
     content: '';
     position: absolute;
@@ -84,7 +84,7 @@ body {
         );
     mask: radial-gradient(circle, transparent 80px, black 82px);
     -webkit-mask: radial-gradient(circle, transparent 80px, black 82px);
-    animation: progress-fill 4s linear forwards;
+    animation: progress-fill 2s linear forwards;
     opacity: 0.5;
 }
 
@@ -96,30 +96,12 @@ body {
             transparent 360deg
         );
     }
-    25% {
-        background: conic-gradient(
-            from 0deg,
-            rgba(255, 255, 255, 0.8) 0deg,
-            rgba(255, 255, 255, 0.8) 90deg,
-            transparent 90deg,
-            transparent 360deg
-        );
-    }
     50% {
         background: conic-gradient(
             from 0deg,
             rgba(255, 255, 255, 0.8) 0deg,
             rgba(255, 255, 255, 0.8) 180deg,
             transparent 180deg,
-            transparent 360deg
-        );
-    }
-    75% {
-        background: conic-gradient(
-            from 0deg,
-            rgba(255, 255, 255, 0.8) 0deg,
-            rgba(255, 255, 255, 0.8) 270deg,
-            transparent 270deg,
             transparent 360deg
         );
     }
@@ -245,7 +227,7 @@ body {
     font-weight: 300;
 }
 
-/* Main App - No Bottom Gap */
+/* Main App */
 .app {
     max-width: 100%;
     width: 100%;
@@ -543,7 +525,7 @@ body {
     white-space: nowrap;
 }
 
-/* Content Area - Compact */
+/* Content Area */
 .content {
     flex: 1;
     padding: 0 1rem;
@@ -785,9 +767,9 @@ body {
     font-weight: 700;
 }
 
-/* Submit Button - Higher Position, No Bottom Gap */
+/* Submit Button - Higher Position */
 .submit-area {
-    padding: 1rem 1rem 1rem;
+    padding: 0.75rem 1rem 1rem;
     border-top: 1px solid var(--glass-border);
     margin-top: auto;
     background: var(--bg-black);
