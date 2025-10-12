@@ -101,31 +101,22 @@ exports.handler = async (event, context) => {
       console.log('✅ WebEngage user successful');
 
       console.log('Tracking WebEngage event...');
-      await trackWebEngageEvent({
-        userId: webengageUserId,
-        eventName: 'PB_DAYS_MasterBox_Claimed',
-        eventData: {
-          email,
-          first_name: firstname || 'Valued Customer',
-          last_name: lastname || '',
-          specialties,
-          specialties_list: specialties.join(', '),
-          specialty_count: specialties.length,
-          submission_id: submissionId,
-          campaign: 'PB_DAYS_OCT_2025',
-          order_id: orderId || 'N/A',
-          campaign_name: 'PB DAYS',
-          campaign_dates: 'October 15 – 17, 2025',
-          company_name: 'PinkBlue',
-          current_year: new Date().getFullYear(),
-          specialty_items_html: specialties.map(s => `<li style="margin: 5px 0; color: #495057;">${s}</li>`).join(''),
-          masterbox_message: specialties.length === 1 
-            ? `Your Custom MasterBox will include products specially selected for ${specialties[0]} practice.`
-            : `Your Custom MasterBox will include products across ${specialties.length} specialties you've selected.`,
-          support_contact: 'support@pinkblue.com',
-          website_url: 'https://pinkblue.com'
-        }
-      });
+     // Replace the WebEngage event tracking section with this simplified version:
+await trackWebEngageEvent({
+  userId: webengageUserId,
+  eventName: 'PB_DAYS_MasterBox_Claimed',
+  eventData: {
+    email: email,
+    first_name: firstname || 'Customer',
+    last_name: lastname || 'User',
+    specialties_list: specialties.join(', '),
+    specialty_count: specialties.length.toString(),
+    submission_id: submissionId,
+    campaign: 'PB_DAYS_OCT_2025',
+    order_id: orderId || 'N/A',
+    test_mode: (testMode || false).toString()
+  }
+});
       results.webengage_event = true;
       console.log('✅ WebEngage event successful');
 
@@ -237,29 +228,6 @@ async function createOrUpdateWebEngageUser(params) {
       last_interaction_date: new Date().toISOString()
     }
   };
-  // Step 3: Track the custom event in WebEngage
-await trackWebEngageEvent({
-  userId: webengageUserId,
-  eventName: 'PB_DAYS_MasterBox_Claimed',
-  eventData: {
-    // Simple string values only
-    email: email,
-    first_name: firstname || 'Customer',
-    last_name: lastname || 'User',
-    specialties_list: specialties.join(', '),
-    specialty_count: String(specialties.length),
-    submission_id: submissionId,
-    campaign: 'PB_DAYS_OCT_2025',
-    order_id: orderId || 'N/A',
-    campaign_name: 'PB DAYS',
-    campaign_dates: 'October 15 – 17, 2025',
-    company_name: 'PinkBlue',
-    current_year: String(new Date().getFullYear()),
-    support_contact: 'support@pinkblue.com',
-    website_url: 'https://pinkblue.com',
-    test_mode: testMode ? 'true' : 'false'
-  }
-});
 
   const response = await axios.post(apiUrl, userData, {
     headers: {
