@@ -1,4 +1,3 @@
-// Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 PB DAYS Premium Experience Starting...');
     new PBDaysApp();
@@ -21,7 +20,6 @@ class PBDaysApp {
     }
     
     setupEventListeners() {
-        // Email form submission
         const emailForm = document.getElementById('emailForm');
         if (emailForm) {
             emailForm.addEventListener('submit', (e) => {
@@ -30,7 +28,6 @@ class PBDaysApp {
             });
         }
         
-        // Specialty selection
         const specialtyCards = document.querySelectorAll('.card');
         specialtyCards.forEach(card => {
             card.addEventListener('click', () => {
@@ -38,7 +35,6 @@ class PBDaysApp {
             });
         });
         
-        // Submit button
         const submitButton = document.getElementById('submitBtn');
         if (submitButton) {
             submitButton.addEventListener('click', () => {
@@ -46,7 +42,6 @@ class PBDaysApp {
             });
         }
         
-        // Load any saved selections
         this.loadSavedSelections();
     }
     
@@ -485,114 +480,70 @@ class PBDaysApp {
     showSuccessState() {
         const specialtySection = document.getElementById('formSection');
         const submitArea = document.getElementById('submitArea');
-        const successState = document.getElementById('success');
+        const successModal = document.getElementById('successModal');
         
         if (specialtySection) specialtySection.style.display = 'none';
         if (submitArea) submitArea.style.display = 'none';
-        if (successState) successState.classList.add('show');
         
-        // Initialize 3D box and buttons
-        setTimeout(() => {
-            this.init3DBox();
-            this.setupShareButton();
-            this.setupReturnButton();
-        }, 300);
-    }
-    
-    // 3D Box Interaction
-    init3DBox() {
-        const box = document.getElementById('masterbox3D');
-        if (!box) return;
-
-        let isDragging = false;
-        let startX = 0;
-        let startY = 0;
-        let currentRotationX = 0;
-        let currentRotationY = 0;
-
-        const handleDragStart = (e) => {
-            isDragging = true;
-            box.style.animation = 'none';
+        if (successModal) {
+            successModal.classList.add('show');
             
-            if (e.type === 'mousedown') {
-                startX = e.clientX;
-                startY = e.clientY;
-            } else {
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
-            }
-            
-            e.preventDefault();
-        };
-
-        const handleDragMove = (e) => {
-            if (!isDragging) return;
-            
-            let currentX, currentY;
-            if (e.type === 'mousemove') {
-                currentX = e.clientX;
-                currentY = e.clientY;
-            } else {
-                currentX = e.touches[0].clientX;
-                currentY = e.touches[0].clientY;
-            }
-            
-            const deltaX = currentX - startX;
-            const deltaY = currentY - startY;
-            
-            currentRotationY += deltaX * 0.5;
-            currentRotationX -= deltaY * 0.5;
-            
-            box.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
-            
-            startX = currentX;
-            startY = currentY;
-            
-            e.preventDefault();
-        };
-
-        const handleDragEnd = () => {
-            isDragging = false;
-        };
-
-        box.addEventListener('mousedown', handleDragStart);
-        box.addEventListener('touchstart', handleDragStart);
-        
-        document.addEventListener('mousemove', handleDragMove);
-        document.addEventListener('touchmove', handleDragMove);
-        
-        document.addEventListener('mouseup', handleDragEnd);
-        document.addEventListener('touchend', handleDragEnd);
-
-        // Auto-spin on load
-        setTimeout(() => {
-            box.classList.add('spinning');
             setTimeout(() => {
-                box.classList.remove('spinning');
-            }, 2000);
-        }, 500);
-    }
-
-    // Share to WhatsApp
-    setupShareButton() {
-        const shareBtn = document.getElementById('shareBtn');
-        if (shareBtn) {
-            shareBtn.addEventListener('click', () => {
-                const message = encodeURIComponent(
-                    "🎁 I just claimed my Custom MasterBox from PB DAYS!\n\n" +
-                    "Get yours too during October 15-17.\n\n" +
-                    "Visit: https://pinkblue.in"
-                );
-                
-                const whatsappUrl = `https://wa.me/?text=${message}`;
-                window.location.href = whatsappUrl;
-            });
+                this.setupShareModalButton();
+                this.setupReturnModalButton();
+            }, 300);
         }
     }
-
-    // Return to PinkBlue
-    setupReturnButton() {
-        const returnBtn = document.getElementById('returnBtn');
+    
+    setupShareModalButton() {
+        const shareBtn = document.getElementById('shareModalBtn');
+        if (!shareBtn) return;
+        
+        shareBtn.addEventListener('click', async () => {
+            const shareText = "🎁 I just claimed my Custom MasterBox from PB DAYS!\n\nGet yours too during October 15-17.\n\nVisit: https://pinkblue.in";
+            
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'PB DAYS MasterBox',
+                        text: shareText
+                    });
+                    console.log('✅ Shared successfully');
+                } catch (error) {
+                    console.log('Share cancelled or failed');
+                    this.fallbackWhatsAppShare(shareText);
+                }
+            } else {
+                this.fallbackWhatsAppShare(shareText);
+            }
+        });
+    }
+    
+    fallbackWhatsAppShare(text) {
+        const message = encodeURIComponent(text);
+        const whatsappUrl = `https://api.whatsapp.com/send?text=${message}`;
+        
+        const newWindow = window.open(whatsappUrl, '_blank');
+        
+        if (!newWindow) {
+            this.copyToClipboard(text);
+            alert('Message copied! Open WhatsApp to paste and share.');
+        }
+    }
+    
+    copyToClipboard(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+    }
+    
+    setupReturnModalButton() {
+        const returnBtn = document.getElementById('returnModalBtn');
         if (returnBtn) {
             returnBtn.addEventListener('click', () => {
                 window.location.href = 'https://pinkblue.in';
