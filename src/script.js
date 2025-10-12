@@ -59,7 +59,7 @@ class PBDaysApp {
                     this.initializeApplication();
                 }, 1500);
             }
-        }, 4000);
+        }, 2000); // 2 seconds loading time
     }
     
     async initializeApplication() {
