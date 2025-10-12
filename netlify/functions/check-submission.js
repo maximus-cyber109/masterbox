@@ -11,83 +11,71 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
+  console.log('Getting customer info...');
+
   try {
-    const { email, customerId } = JSON.parse(event.body || '{}');
+    const { authorization } = event.headers;
     
-    if (!email && !customerId) {
+    if (!authorization || !authorization.startsWith('Bearer ')) {
+      console.log('No bearer token found');
       return {
-        statusCode: 400,
+        statusCode: 401,
         headers,
-        body: JSON.stringify({ error: 'Email or Customer ID required' })
+        body: JSON.stringify({ 
+          error: 'No bearer token provided',
+          fallback: true 
+        })
       };
     }
 
-    // Check submission via WebEngage user data
-    const webengageUserId = customerId ? `magento_${customerId}` : email.replace(/[@.]/g, '_');
-    const hasSubmitted = await checkWebEngageUserSubmission(webengageUserId, email);
+    const token = authorization.split(' ')[1];
+    const magentoBaseUrl = process.env.MAGENTO_BASE_URL;
 
+    if (!magentoBaseUrl) {
+      throw new Error('MAGENTO_BASE_URL not configured');
+    }
+
+    console.log('Calling Magento API...');
+
+    const customerResponse = await axios.get(
+      `${magentoBaseUrl}/rest/V1/customers/me`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+
+    const customer = customerResponse.data;
+    console.log('Customer found:', customer.email);
+    
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        hasSubmitted: hasSubmitted.submitted,
-        submissionData: hasSubmitted.data
+        success: true,
+        customer: {
+          id: customer.id,
+          email: customer.email,
+          firstname: customer.firstname,
+          lastname: customer.lastname
+        }
       })
     };
 
   } catch (error) {
-    console.error('Check submission error:', error);
+    console.error('Magento API Error:', error.message);
+    
     return {
-      statusCode: 200, // Return 200 to continue with form
+      statusCode: 200,
       headers,
       body: JSON.stringify({ 
-        hasSubmitted: false, // Assume not submitted if we can't check
-        error: 'Could not verify submission status'
+        error: 'Failed to get customer info',
+        fallback: true,
+        details: error.response?.data || error.message
       })
     };
   }
 };
-
-// Helper function to check WebEngage user submission
-async function checkWebEngageUserSubmission(userId, email) {
-  try {
-    const licenseCode = process.env.WEBENGAGE_LICENSE_CODE;
-    const apiKey = process.env.WEBENGAGE_API_KEY;
-
-    // Try to get user data from WebEngage
-    const apiUrl = `https://api.webengage.com/v1/accounts/${licenseCode}/users/${userId}`;
-
-    const response = await axios.get(apiUrl, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000
-    });
-
-    const userData = response.data;
-    
-    // Check if user has pb_days_participant attribute
-    if (userData.attributes && userData.attributes.pb_days_participant === true) {
-      return {
-        submitted: true,
-        data: {
-          timestamp: userData.attributes.pb_days_submission_date || new Date().toISOString(),
-          specialties: userData.attributes.pb_days_specialties || 'Previously submitted',
-          count: userData.attributes.pb_days_specialty_count || 'N/A'
-        }
-      };
-    }
-
-    return { submitted: false };
-
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      // User not found = not submitted
-      return { submitted: false };
-    }
-    
-    console.error('WebEngage user check error:', error.response?.data || error.message);
-    return { submitted: false }; // Assume not submitted on error
-  }
-}
