@@ -39,7 +39,7 @@ exports.handler = async (event, context) => {
       orderId,
       orderEntityId,
       orderAmount,
-      testMode = false  // ✅ Fixed: Default to false if not provided
+      testMode = false
     } = submissionData;
 
     // Validate required fields
@@ -63,7 +63,7 @@ exports.handler = async (event, context) => {
       lastname: lastname || 'N/A',
       specialties: specialties.join(', '),
       specialty_count: specialties.length,
-      campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',  // ✅ Fixed: Use testMode properly
+      campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',
       order_id: orderId || 'N/A'
     };
 
@@ -99,34 +99,21 @@ exports.handler = async (event, context) => {
         submissionId,
         specialties,
         orderId,
-        testMode  // ✅ Pass testMode to function
+        testMode
       });
       results.webengage_user = true;
       console.log('✅ WebEngage user successful');
 
       console.log('Tracking WebEngage event...');
-      await trackWebEngageEvent({
-        userId: webengageUserId,
-        eventName: 'PB_DAYS_MasterBox_Claimed',
-        eventData: {
-          email: email,
-          first_name: firstname || 'Customer',
-          last_name: lastname || 'User',
-          specialties_list: specialties.join(', '),
-          specialty_count: String(specialties.length),
-          submission_id: submissionId,
-          campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',  // ✅ Fixed
-          order_id: orderId || 'N/A',
-          campaign_name: 'PB DAYS',
-          campaign_dates: 'October 15 – 17, 2025',
-          company_name: 'PinkBlue',
-          current_year: String(new Date().getFullYear()),
-          support_contact: 'support@pinkblue.com',
-          website_url: 'https://pinkblue.com',
-          test_mode: testMode ? 'true' : 'false',  // ✅ Fixed: Proper boolean to string
-          order_amount: String(orderAmount || 0),
-          order_entity_id: String(orderEntityId || 'N/A')
-        }
+      await sendSimpleWebEngageEvent({
+        email,
+        firstname,
+        lastname,
+        specialties,
+        orderId,
+        orderAmount,
+        submissionId,
+        testMode
       });
       results.webengage_event = true;
       console.log('✅ WebEngage event successful');
@@ -225,7 +212,7 @@ async function createOrUpdateWebEngageUser(params) {
       pb_days_specialties: specialties.join(', '),
       pb_days_specialty_count: specialties.length,
       pb_days_order_id: orderId || 'N/A',
-      pb_days_campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',  // ✅ Fixed
+      pb_days_campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',
       pb_days_submission_date: new Date().toISOString(),
       source: 'PB_DAYS_MasterBox_Campaign',
       specialty_endodontist: specialties.includes('Endodontist'),
@@ -235,9 +222,9 @@ async function createOrUpdateWebEngageUser(params) {
       specialty_paedodontist: specialties.includes('Paedodontist'),
       specialty_periodontist: specialties.includes('Periodontist'),
       specialty_general_dentist: specialties.includes('General Dentist'),
-      last_campaign_participation: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',  // ✅ Fixed
+      last_campaign_participation: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',
       last_interaction_date: new Date().toISOString(),
-      test_mode: testMode || false  // ✅ Fixed: Proper boolean
+      test_mode: testMode || false
     }
   };
 
@@ -253,34 +240,133 @@ async function createOrUpdateWebEngageUser(params) {
   return response.data;
 }
 
-async function trackWebEngageEvent({ userId, eventName, eventData }) {
-  const licenseCode = process.env.WEBENGAGE_LICENSE_CODE;
-  const apiKey = process.env.WEBENGAGE_API_KEY;
-
-  if (!licenseCode || !apiKey) {
-    throw new Error('WebEngage credentials not configured');
-  }
-
-  const apiUrl = `https://api.webengage.com/v1/accounts/${licenseCode}/events`;
+// ✅ FIXED: Using your working WebEngage approach
+async function sendSimpleWebEngageEvent(params) {
+  const { email, firstname, lastname, specialties, orderId, orderAmount, submissionId, testMode } = params;
   
-  console.log('WebEngage Event URL:', apiUrl);
-  console.log('Event data being sent:', eventData);  // ✅ Added debug logging
+  try {
+    console.log('📧 Sending WebEngage event using working method...');
+    
+    if (testMode) {
+      console.log('🧪 Test mode - logging event details');
+      console.log('📧 Would send PB_DAYS_MasterBox_Claimed event to:', email);
+      console.log('🎁 Specialties:', specialties.join(', '));
+      console.log('📦 Order ID:', orderId);
+      console.log('💰 Order Amount: ₹' + (orderAmount || 0));
+      console.log('👤 Customer:', getCustomerName(firstname, lastname));
+      return true;
+    }
+    
+    // ✅ WebEngage credentials - using your working values
+    const WEBENGAGE_LICENSE_CODE = process.env.WEBENGAGE_LICENSE_CODE || '82618240';
+    const WEBENGAGE_API_KEY = process.env.WEBENGAGE_API_KEY || '997ecae4-4632-4cb0-a65d-8427472e8f31';
+    
+    if (!WEBENGAGE_LICENSE_CODE || !WEBENGAGE_API_KEY) {
+      console.error('❌ WebEngage credentials missing');
+      return false;
+    }
+    
+    console.log('📧 Sending to WebEngage for:', email);
+    
+    // ✅ Simple payload like your working version
+    const simplePayload = {
+      "userId": email,
+      "eventName": "PB_DAYS_MasterBox_Claimed",
+      "eventData": {
+        "specialties_list": specialties.join(', '),
+        "specialty_count": specialties.length,
+        "order_id": orderId || 'N/A',
+        "order_amount": parseInt(orderAmount) || 0,
+        "customer_name": getCustomerName(firstname, lastname),
+        "submission_id": submissionId,
+        "campaign": testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',
+        "company_name": "PinkBlue",
+        "campaign_dates": "October 15 – 17, 2025",
+        "support_contact": "support@pinkblue.com",
+        "website_url": "https://pinkblue.com"
+      }
+    };
+    
+    console.log('📤 WebEngage payload:', JSON.stringify(simplePayload, null, 2));
+    
+    const webEngageEndpoint = `https://api.webengage.com/v1/accounts/${WEBENGAGE_LICENSE_CODE}/events`;
+    
+    // ✅ Method 1: Simple fetch like your working version
+    const response1 = await fetch(webEngageEndpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${WEBENGAGE_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(simplePayload)
+    });
+    
+    console.log('📥 Method 1 response status:', response1.status);
+    
+    if (response1.ok) {
+      const result1 = await response1.json();
+      console.log('✅ WebEngage event sent successfully');
+      return true;
+    }
+    
+    // ✅ Method 2: Add timestamp like your working version
+    console.log('🔄 Method 2: Adding eventTime...');
+    const payloadWithTime = {
+      ...simplePayload,
+      "eventTime": Math.floor(Date.now() / 1000)
+    };
+    
+    const response2 = await fetch(webEngageEndpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${WEBENGAGE_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payloadWithTime)
+    });
+    
+    console.log('📥 Method 2 response status:', response2.status);
+    
+    if (response2.ok) {
+      console.log('✅ WebEngage event with timestamp worked');
+      return true;
+    }
+    
+    // ✅ Method 3: Try with ISO timestamp
+    console.log('🔄 Method 3: ISO timestamp...');
+    const payloadWithISO = {
+      ...simplePayload,
+      "eventTime": new Date().toISOString()
+    };
+    
+    const response3 = await fetch(webEngageEndpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${WEBENGAGE_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payloadWithISO)
+    });
+    
+    if (response3.ok) {
+      console.log('✅ WebEngage event with ISO timestamp worked');
+      return true;
+    }
+    
+    console.log('❌ All WebEngage methods failed');
+    const errorText = await response1.text();
+    console.error('WebEngage error:', errorText);
+    return false;
+    
+  } catch (error) {
+    console.error('❌ WebEngage event error:', error.message);
+    return false;
+  }
+}
 
-  const eventPayload = {
-    userId,
-    eventName,
-    eventTime: new Date().toISOString(),
-    eventData
-  };
-
-  const response = await axios.post(apiUrl, eventPayload, {
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    timeout: 15000
-  });
-
-  console.log('WebEngage event response:', response.status);
-  return response.data;
+// ✅ Helper function from your working code
+function getCustomerName(firstname, lastname) {
+  const first = firstname || '';
+  const last = lastname || '';
+  return (first + ' ' + last).trim() || 'Valued Customer';
 }
