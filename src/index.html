@@ -14,7 +14,7 @@
         </div>
         <div class="loading-content">
             <h1>Thank You For Your Order!</h1>
-            <p>Your Custom MasterBox awaits...</p>
+            <p>Preparing your MasterBox experience...</p>
         </div>
     </div>
 
@@ -26,7 +26,7 @@
             <p class="dates">October 15 – 17</p>
             <div class="divider"></div>
             <h2 class="subtitle">Choose Your Specialties</h2>
-            <p class="description">Get Your Custom MasterBox</p>
+            <p class="description">Customize Your Perfect MasterBox</p>
         </div>
 
         <!-- Loading State -->
@@ -44,22 +44,19 @@
                     <input type="email" id="emailInput" placeholder="your@email.com" required>
                     <button type="submit">
                         <span class="btn-loading" id="emailLoading"></span>
-                        <span id="emailText">Fetch My Order</span>
+                        <span id="emailText">Continue</span>
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- Order Card -->
+        <!-- Order Card - Simplified -->
         <div class="order-card" id="orderCard">
-            <div class="order-info">
-                <h3 id="customerName">Welcome!</h3>
-                <div class="order-details">
-                    <span id="orderNumber">Order #12345</span>
-                    <span id="orderAmount">₹2,500</span>
-                </div>
+            <div class="welcome-section">
+                <h3 id="customerName">Welcome back!</h3>
+                <p class="welcome-subtitle">Let's customize your MasterBox</p>
             </div>
-            <div class="badge">🎁 MasterBox Eligible</div>
+            <div class="badge">MasterBox Eligible</div>
         </div>
 
         <!-- Main Content -->
@@ -67,51 +64,58 @@
             <!-- Form -->
             <div class="form-section" id="formSection">
                 <h2>Select Your Specialties</h2>
-                <p>Choose all that apply to create your perfect MasterBox</p>
+                <p>Choose all that apply to your practice</p>
                 
                 <div class="counter" id="counter">No specialties selected</div>
                 
                 <div class="grid">
                     <div class="card" data-specialty="Endodontist">
-                        <div class="icon">🦷</div>
-                        <div class="name">Endodontist</div>
-                        <div class="dot"></div>
+                        <div class="card-inner">
+                            <div class="specialty-label">Endodontist</div>
+                            <div class="dot"></div>
+                        </div>
                     </div>
                     
                     <div class="card" data-specialty="Prosthodontist">
-                        <div class="icon">🔧</div>
-                        <div class="name">Prosthodontist</div>
-                        <div class="dot"></div>
+                        <div class="card-inner">
+                            <div class="specialty-label">Prosthodontist</div>
+                            <div class="dot"></div>
+                        </div>
                     </div>
                     
                     <div class="card" data-specialty="Orthodontist">
-                        <div class="icon">🦷</div>
-                        <div class="name">Orthodontist</div>
-                        <div class="dot"></div>
+                        <div class="card-inner">
+                            <div class="specialty-label">Orthodontist</div>
+                            <div class="dot"></div>
+                        </div>
                     </div>
                     
                     <div class="card" data-specialty="Oral And Maxillofacial Surgeon">
-                        <div class="icon">⚕️</div>
-                        <div class="name">Oral & Maxillofacial Surgeon</div>
-                        <div class="dot"></div>
+                        <div class="card-inner">
+                            <div class="specialty-label">Oral & Maxillofacial Surgeon</div>
+                            <div class="dot"></div>
+                        </div>
                     </div>
                     
                     <div class="card" data-specialty="Paedodontist">
-                        <div class="icon">👶</div>
-                        <div class="name">Paedodontist</div>
-                        <div class="dot"></div>
+                        <div class="card-inner">
+                            <div class="specialty-label">Paedodontist</div>
+                            <div class="dot"></div>
+                        </div>
                     </div>
                     
                     <div class="card" data-specialty="Periodontist">
-                        <div class="icon">🔬</div>
-                        <div class="name">Periodontist</div>
-                        <div class="dot"></div>
+                        <div class="card-inner">
+                            <div class="specialty-label">Periodontist</div>
+                            <div class="dot"></div>
+                        </div>
                     </div>
                     
                     <div class="card" data-specialty="General Dentist">
-                        <div class="icon">👨‍⚕️</div>
-                        <div class="name">General Dentist</div>
-                        <div class="dot"></div>
+                        <div class="card-inner">
+                            <div class="specialty-label">General Dentist</div>
+                            <div class="dot"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -124,12 +128,35 @@
                 <div class="info" id="submissionInfo"></div>
             </div>
 
-            <!-- Success -->
+            <!-- Success with 3D Box -->
             <div class="result" id="success">
-                <div class="result-icon success">✓</div>
+                <!-- 3D Interactive MasterBox -->
+                <div class="masterbox-3d-container" id="masterboxContainer">
+                    <div class="masterbox-3d" id="masterbox3D">
+                        <img src="https://email-editor-resources.s3.amazonaws.com/images/82618240/ChatGPT%20Image%20Oct%2013%2C%202025%2C%2001_53_38%20AM.png" alt="MasterBox" class="box-image">
+                    </div>
+                    <p class="interaction-hint">Touch & Drag to Spin</p>
+                </div>
+
                 <h2>MasterBox Confirmed!</h2>
-                <p>Your Custom MasterBox will be delivered with your order</p>
+                <p class="success-message-main">Your Custom MasterBox will be delivered along with your order</p>
                 <div class="success-badge">Custom MasterBox Reserved</div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="action-btn share-btn" id="shareBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
+                        Share with Doctors
+                    </button>
+                    <button class="action-btn return-btn" id="returnBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        </svg>
+                        Return to PinkBlue
+                    </button>
+                </div>
             </div>
         </div>
 
