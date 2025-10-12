@@ -12,7 +12,6 @@ exports.handler = async (event, context) => {
   }
 
   console.log('=== SUBMIT SPECIALTIES FUNCTION START ===');
-  console.log('Method:', event.httpMethod);
   console.log('Body received:', event.body);
 
   try {
@@ -49,6 +48,9 @@ exports.handler = async (event, context) => {
     if (!specialties || !Array.isArray(specialties) || specialties.length === 0) {
       throw new Error('At least one specialty must be selected');
     }
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
 
     const submissionId = `PB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log('Generated submission ID:', submissionId);
@@ -64,7 +66,7 @@ exports.handler = async (event, context) => {
       specialties: specialties.join(', '),
       specialty_count: specialties.length,
       campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',
-      order_id: orderId || 'N/A'
+      order_id: orderId
     };
 
     console.log('Submission payload:', submissionPayload);
@@ -75,17 +77,35 @@ exports.handler = async (event, context) => {
       webengage_event: false
     };
 
-    // Step 1: Send to Google Sheets
+    // ✅ Step 1: Check Google Sheets FIRST (this is our source of truth)
     try {
       console.log('Sending to Google Sheets...');
-      await sendToGoogleSheetsWebhook(submissionPayload);
+      const sheetsResponse = await sendToGoogleSheetsWebhook(submissionPayload);
+      
+      // ✅ Check if Google Sheets detected a duplicate
+      if (sheetsResponse.duplicate || !sheetsResponse.success) {
+        console.log('❌ Google Sheets rejected - duplicate detected');
+        return {
+          statusCode: 409,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: sheetsResponse.message || 'This order has already claimed a MasterBox',
+            duplicate: true
+          })
+        };
+      }
+      
       results.sheets = true;
       console.log('✅ Google Sheets successful');
     } catch (sheetsError) {
       console.error('❌ Google Sheets failed:', sheetsError.message);
+      
+      // If Google Sheets fails, don't proceed
+      throw new Error('Could not verify submission status. Please try again.');
     }
 
-    // Step 2: WebEngage operations
+    // ✅ Step 2: Only proceed with WebEngage if Google Sheets accepted the submission
     const webengageUserId = customerId ? `magento_${customerId}` : email.replace(/[@.]/g, '_');
     
     try {
@@ -120,10 +140,7 @@ exports.handler = async (event, context) => {
 
     } catch (webengageError) {
       console.error('❌ WebEngage failed:', webengageError.message);
-      
-      if (!results.sheets) {
-        throw new Error('Both Google Sheets and WebEngage failed');
-      }
+      // WebEngage failure is non-critical since Google Sheets succeeded
     }
 
     console.log('=== SUCCESS ===');
@@ -134,7 +151,7 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({
         success: true,
-        message: 'Specialties submitted successfully',
+        message: 'MasterBox claimed successfully!',
         submissionId,
         integrations: results
       })
@@ -183,6 +200,8 @@ async function sendToGoogleSheetsWebhook(data) {
   });
 
   console.log('Google Sheets response:', response.status, response.data);
+  
+  // ✅ Return the full response data (includes duplicate flag)
   return response.data;
 }
 
@@ -240,7 +259,6 @@ async function createOrUpdateWebEngageUser(params) {
   return response.data;
 }
 
-// ✅ FIXED: Using your working WebEngage approach
 async function sendSimpleWebEngageEvent(params) {
   const { email, firstname, lastname, specialties, orderId, orderAmount, submissionId, testMode } = params;
   
@@ -257,7 +275,6 @@ async function sendSimpleWebEngageEvent(params) {
       return true;
     }
     
-    // ✅ WebEngage credentials - using your working values
     const WEBENGAGE_LICENSE_CODE = process.env.WEBENGAGE_LICENSE_CODE || '82618240';
     const WEBENGAGE_API_KEY = process.env.WEBENGAGE_API_KEY || '997ecae4-4632-4cb0-a65d-8427472e8f31';
     
@@ -268,7 +285,6 @@ async function sendSimpleWebEngageEvent(params) {
     
     console.log('📧 Sending to WebEngage for:', email);
     
-    // ✅ Simple payload like your working version
     const simplePayload = {
       "userId": email,
       "eventName": "PB_DAYS_MasterBox_Claimed",
@@ -291,7 +307,6 @@ async function sendSimpleWebEngageEvent(params) {
     
     const webEngageEndpoint = `https://api.webengage.com/v1/accounts/${WEBENGAGE_LICENSE_CODE}/events`;
     
-    // ✅ Method 1: Simple fetch like your working version
     const response1 = await fetch(webEngageEndpoint, {
       method: 'POST',
       headers: {
@@ -304,12 +319,10 @@ async function sendSimpleWebEngageEvent(params) {
     console.log('📥 Method 1 response status:', response1.status);
     
     if (response1.ok) {
-      const result1 = await response1.json();
       console.log('✅ WebEngage event sent successfully');
       return true;
     }
     
-    // ✅ Method 2: Add timestamp like your working version
     console.log('🔄 Method 2: Adding eventTime...');
     const payloadWithTime = {
       ...simplePayload,
@@ -332,27 +345,6 @@ async function sendSimpleWebEngageEvent(params) {
       return true;
     }
     
-    // ✅ Method 3: Try with ISO timestamp
-    console.log('🔄 Method 3: ISO timestamp...');
-    const payloadWithISO = {
-      ...simplePayload,
-      "eventTime": new Date().toISOString()
-    };
-    
-    const response3 = await fetch(webEngageEndpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${WEBENGAGE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payloadWithISO)
-    });
-    
-    if (response3.ok) {
-      console.log('✅ WebEngage event with ISO timestamp worked');
-      return true;
-    }
-    
     console.log('❌ All WebEngage methods failed');
     const errorText = await response1.text();
     console.error('WebEngage error:', errorText);
@@ -364,7 +356,6 @@ async function sendSimpleWebEngageEvent(params) {
   }
 }
 
-// ✅ Helper function from your working code
 function getCustomerName(firstname, lastname) {
   const first = firstname || '';
   const last = lastname || '';
