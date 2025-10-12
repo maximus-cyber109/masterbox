@@ -1,0 +1,12 @@
+{
+  "name": "pb-days-masterbox",
+  "version": "1.0.0",
+  "description": "PB DAYS MasterBox Specialty Selection System",
+  "scripts": {
+    "build": "echo 'Build complete'",
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
