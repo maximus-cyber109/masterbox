@@ -1,191 +1,242 @@
-const axios = require('axios');
-
 exports.handler = async (event, context) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
-  };
-
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
-  }
-
-  console.log('=== GET LATEST ORDER START ===');
-
-  try {
-    const { email } = JSON.parse(event.body || '{}');
+    console.log('📦 Get Latest Order - Enhanced with test overrides');
     
-    if (!email) {
-      throw new Error('Email is required');
-    }
-
-    const magentoBaseUrl = process.env.MAGENTO_BASE_URL;
-    const apiToken = process.env.MAGENTO_API_TOKEN;
-
-    if (!magentoBaseUrl || !apiToken) {
-      console.error('Missing Magento configuration');
-      throw new Error('Magento API configuration missing');
-    }
-
-    console.log('Magento Base URL:', magentoBaseUrl);
-    console.log('Searching for customer by email:', email);
-
-    // Step 1: Search for customer by email using admin token
-    const customerSearchUrl = `${magentoBaseUrl}/rest/V1/customers/search`;
-    
-    console.log('Customer search URL:', customerSearchUrl);
-
-    const customerResponse = await axios.get(customerSearchUrl, {
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json'
-      },
-      params: {
-        'searchCriteria[filterGroups][0][filters][0][field]': 'email',
-        'searchCriteria[filterGroups][0][filters][0][value]': email,
-        'searchCriteria[filterGroups][0][filters][0][conditionType]': 'eq',
-        'searchCriteria[pageSize]': 1
-      },
-      timeout: 15000,
-      validateStatus: function (status) {
-        return status < 500; // Don't throw on 4xx errors
-      }
-    });
-
-    console.log('Customer search response status:', customerResponse.status);
-
-    if (customerResponse.status === 404) {
-      // Customer not found
-      throw new Error('Customer not found with this email address');
-    }
-
-    if (customerResponse.status >= 400) {
-      console.error('Customer search failed:', customerResponse.status, customerResponse.data);
-      throw new Error(`Customer search failed: ${customerResponse.status}`);
-    }
-
-    const customers = customerResponse.data?.items || [];
-    
-    if (!customers || customers.length === 0) {
-      console.log('No customers found for email:', email);
-      throw new Error('Customer not found with this email address');
-    }
-
-    const customer = customers[0];
-    console.log('Customer found:', {
-      id: customer.id,
-      email: customer.email,
-      firstname: customer.firstname,
-      lastname: customer.lastname
-    });
-
-    // Step 2: Get customer's orders using admin token
-    const ordersUrl = `${magentoBaseUrl}/rest/V1/orders`;
-    
-    console.log('Fetching orders for customer ID:', customer.id);
-
-    const ordersResponse = await axios.get(ordersUrl, {
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json'
-      },
-      params: {
-        'searchCriteria[filterGroups][0][filters][0][field]': 'customer_id',
-        'searchCriteria[filterGroups][0][filters][0][value]': customer.id,
-        'searchCriteria[filterGroups][0][filters][0][conditionType]': 'eq',
-        'searchCriteria[sortOrders][0][field]': 'created_at',
-        'searchCriteria[sortOrders][0][direction]': 'DESC',
-        'searchCriteria[pageSize]': 1
-      },
-      timeout: 15000,
-      validateStatus: function (status) {
-        return status < 500;
-      }
-    });
-
-    console.log('Orders response status:', ordersResponse.status);
-
-    if (ordersResponse.status >= 400) {
-      console.error('Orders fetch failed:', ordersResponse.status, ordersResponse.data);
-      throw new Error(`Orders fetch failed: ${ordersResponse.status}`);
-    }
-
-    const orders = ordersResponse.data?.items || [];
-    
-    if (!orders || orders.length === 0) {
-      console.log('No orders found for customer');
-      throw new Error('No orders found for this customer');
-    }
-
-    const latestOrder = orders[0];
-    console.log('Latest order found:', {
-      entity_id: latestOrder.entity_id,
-      increment_id: latestOrder.increment_id,
-      status: latestOrder.status,
-      grand_total: latestOrder.grand_total
-    });
-
-    // Step 3: Return success response
-    const response = {
-      success: true,
-      customer: {
-        id: customer.id,
-        email: customer.email,
-        firstname: customer.firstname || 'Customer',
-        lastname: customer.lastname || 'User'
-      },
-      order: {
-        id: latestOrder.entity_id,
-        increment_id: latestOrder.increment_id,
-        status: latestOrder.status,
-        created_at: latestOrder.created_at,
-        grand_total: latestOrder.grand_total,
-        currency_code: latestOrder.order_currency_code || 'INR'
-      }
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
     };
-
-    console.log('=== SUCCESS ===');
-    console.log('Returning response:', JSON.stringify(response, null, 2));
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(response)
-    };
-
-  } catch (error) {
-    console.error('=== ORDER FETCH ERROR ===');
-    console.error('Error message:', error.message);
-    console.error('Error details:', error.response?.data || 'No additional details');
-    console.error('Error stack:', error.stack);
-
-    // Determine appropriate status code
-    let statusCode = 500;
-    let errorMessage = error.message;
-
-    if (error.message.includes('Customer not found')) {
-      statusCode = 404;
-      errorMessage = 'No customer found with this email address';
-    } else if (error.message.includes('No orders found')) {
-      statusCode = 404;
-      errorMessage = 'No recent orders found for this customer';
-    } else if (error.message.includes('configuration missing')) {
-      statusCode = 500;
-      errorMessage = 'Server configuration error';
+    
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 200, headers, body: '' };
     }
     
-    return {
-      statusCode: statusCode,
-      headers,
-      body: JSON.stringify({
-        success: false,
-        error: errorMessage,
-        details: {
-          timestamp: new Date().toISOString(),
-          function: 'get-latest-order'
+    if (event.httpMethod !== 'POST') {
+        return {
+            statusCode: 405,
+            headers,
+            body: JSON.stringify({ 
+                success: false, 
+                error: 'Method not allowed. Use POST.' 
+            })
+        };
+    }
+    
+    try {
+        const { email } = JSON.parse(event.body || '{}');
+        
+        if (!email) {
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ 
+                    success: false, 
+                    error: 'Email is required' 
+                })
+            };
         }
-      })
-    };
-  }
+        
+        const normalizedEmail = email.toLowerCase().trim();
+        console.log('Searching for customer email:', normalizedEmail);
+        
+        // ✅ Test Override - Force Fetch Mode
+        if (normalizedEmail.includes('-forcefetch')) {
+            const cleanEmail = normalizedEmail.replace('-forcefetch', '');
+            console.log('🧪 TEST MODE: Force fetch override detected');
+            
+            const mockData = {
+                entity_id: `TEST_${Date.now()}`,
+                increment_id: `TEST-${Math.floor(Math.random() * 10000)}`,
+                grand_total: '2500.00',
+                status: 'complete',
+                created_at: new Date().toISOString(),
+                customer_email: cleanEmail,
+                customer_firstname: 'Test',
+                customer_lastname: 'User',
+                order_currency_code: 'INR'
+            };
+            
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    success: true,
+                    customer: {
+                        id: `TEST_${Date.now()}`,
+                        email: cleanEmail,
+                        firstname: 'Test',
+                        lastname: 'User'
+                    },
+                    order: {
+                        id: mockData.entity_id,
+                        increment_id: mockData.increment_id,
+                        status: mockData.status,
+                        created_at: mockData.created_at,
+                        grand_total: mockData.grand_total,
+                        currency_code: mockData.order_currency_code
+                    },
+                    testMode: true
+                })
+            };
+        }
+        
+        // ✅ Special Test Overrides
+        if (normalizedEmail.includes('test_override_maaz') || normalizedEmail.includes('test_override_valli')) {
+            console.log('✅ Admin override detected');
+            const cleanEmail = normalizedEmail.replace(/[_-]?test_override_(maaz|valli)/g, '@gmail.com');
+            
+            const mockData = {
+                entity_id: '789123',
+                increment_id: 'ADMIN_' + Date.now(),
+                grand_total: '15000.00',
+                status: 'complete',
+                created_at: new Date().toISOString(),
+                customer_email: cleanEmail,
+                customer_firstname: 'Admin',
+                customer_lastname: 'User',
+                order_currency_code: 'INR'
+            };
+            
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    success: true,
+                    customer: {
+                        id: mockData.entity_id,
+                        email: cleanEmail,
+                        firstname: mockData.customer_firstname,
+                        lastname: mockData.customer_lastname
+                    },
+                    order: {
+                        id: mockData.entity_id,
+                        increment_id: mockData.increment_id,
+                        status: mockData.status,
+                        created_at: mockData.created_at,
+                        grand_total: mockData.grand_total,
+                        currency_code: mockData.order_currency_code
+                    },
+                    testMode: true
+                })
+            };
+        }
+        
+        // ✅ Real Magento API call using your working approach
+        const API_TOKEN = process.env.MAGENTO_API_TOKEN;
+        const BASE_URL = process.env.MAGENTO_BASE_URL;
+        
+        if (!API_TOKEN || !BASE_URL) {
+            console.error('Missing Magento configuration');
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({
+                    success: false,
+                    error: 'Server configuration error'
+                })
+            };
+        }
+        
+        console.log('Magento Base URL:', BASE_URL);
+        
+        // ✅ Look for recent orders (last 30 days to be safe)
+        const maxDaysAgo = new Date();
+        maxDaysAgo.setDate(maxDaysAgo.getDate() - 30);
+        maxDaysAgo.setHours(0, 0, 0, 0);
+        
+        const searchUrl = `${BASE_URL}/orders?` +
+            `searchCriteria[filterGroups][0][filters][0][field]=customer_email&` +
+            `searchCriteria[filterGroups][0][filters][0][value]=${encodeURIComponent(normalizedEmail)}&` +
+            `searchCriteria[filterGroups][0][filters][0][conditionType]=eq&` +
+            `searchCriteria[filterGroups][1][filters][0][field]=created_at&` +
+            `searchCriteria[filterGroups][1][filters][0][value]=${maxDaysAgo.toISOString()}&` +
+            `searchCriteria[filterGroups][1][filters][0][conditionType]=from&` +
+            `searchCriteria[sortOrders][0][field]=created_at&` +
+            `searchCriteria[sortOrders][0][direction]=DESC&` +
+            `searchCriteria[pageSize]=1`;
+        
+        console.log('Making request to:', searchUrl);
+        
+        const response = await fetch(searchUrl, {
+            headers: {
+                'Authorization': `Bearer ${API_TOKEN}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 15000
+        });
+        
+        console.log('Magento API response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Magento API error:', response.status, errorText);
+            
+            return {
+                statusCode: 404,
+                headers,
+                body: JSON.stringify({
+                    success: false,
+                    error: response.status === 404 ? 
+                        'No customer found with this email address' : 
+                        `Magento API error: ${response.status}`
+                })
+            };
+        }
+        
+        const orderData = await response.json();
+        console.log('Orders found:', orderData.total_count || 0);
+        
+        if (orderData.items && orderData.items.length > 0) {
+            const recentOrder = orderData.items[0];
+            console.log('Latest order:', {
+                increment_id: recentOrder.increment_id,
+                grand_total: recentOrder.grand_total,
+                status: recentOrder.status
+            });
+            
+            // ✅ Return in the format expected by the frontend
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    success: true,
+                    customer: {
+                        id: recentOrder.customer_id || Date.now(),
+                        email: recentOrder.customer_email || normalizedEmail,
+                        firstname: recentOrder.customer_firstname || 'Customer',
+                        lastname: recentOrder.customer_lastname || 'User'
+                    },
+                    order: {
+                        id: recentOrder.entity_id,
+                        increment_id: recentOrder.increment_id,
+                        status: recentOrder.status,
+                        created_at: recentOrder.created_at,
+                        grand_total: recentOrder.grand_total,
+                        currency_code: recentOrder.order_currency_code || 'INR'
+                    }
+                })
+            };
+        } else {
+            console.log('No orders found for email:', normalizedEmail);
+            return {
+                statusCode: 404,
+                headers,
+                body: JSON.stringify({
+                    success: false,
+                    error: 'No recent orders found for this email address'
+                })
+            };
+        }
+        
+    } catch (error) {
+        console.error('💥 Function error:', error);
+        return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({
+                success: false,
+                error: `Internal error: ${error.message}`
+            })
+        };
+    }
 };
