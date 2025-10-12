@@ -36,7 +36,10 @@ exports.handler = async (event, context) => {
       lastname, 
       customerId, 
       specialties, 
-      orderId 
+      orderId,
+      orderEntityId,
+      orderAmount,
+      testMode = false  // ✅ Fixed: Default to false if not provided
     } = submissionData;
 
     // Validate required fields
@@ -60,7 +63,7 @@ exports.handler = async (event, context) => {
       lastname: lastname || 'N/A',
       specialties: specialties.join(', '),
       specialty_count: specialties.length,
-      campaign: 'PB_DAYS_OCT_2025',
+      campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',  // ✅ Fixed: Use testMode properly
       order_id: orderId || 'N/A'
     };
 
@@ -95,28 +98,36 @@ exports.handler = async (event, context) => {
         customerId,
         submissionId,
         specialties,
-        orderId
+        orderId,
+        testMode  // ✅ Pass testMode to function
       });
       results.webengage_user = true;
       console.log('✅ WebEngage user successful');
 
       console.log('Tracking WebEngage event...');
-     // Replace the WebEngage event tracking section with this simplified version:
-await trackWebEngageEvent({
-  userId: webengageUserId,
-  eventName: 'PB_DAYS_MasterBox_Claimed',
-  eventData: {
-    email: email,
-    first_name: firstname || 'Customer',
-    last_name: lastname || 'User',
-    specialties_list: specialties.join(', '),
-    specialty_count: specialties.length.toString(),
-    submission_id: submissionId,
-    campaign: 'PB_DAYS_OCT_2025',
-    order_id: orderId || 'N/A',
-    test_mode: (testMode || false).toString()
-  }
-});
+      await trackWebEngageEvent({
+        userId: webengageUserId,
+        eventName: 'PB_DAYS_MasterBox_Claimed',
+        eventData: {
+          email: email,
+          first_name: firstname || 'Customer',
+          last_name: lastname || 'User',
+          specialties_list: specialties.join(', '),
+          specialty_count: String(specialties.length),
+          submission_id: submissionId,
+          campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',  // ✅ Fixed
+          order_id: orderId || 'N/A',
+          campaign_name: 'PB DAYS',
+          campaign_dates: 'October 15 – 17, 2025',
+          company_name: 'PinkBlue',
+          current_year: String(new Date().getFullYear()),
+          support_contact: 'support@pinkblue.com',
+          website_url: 'https://pinkblue.com',
+          test_mode: testMode ? 'true' : 'false',  // ✅ Fixed: Proper boolean to string
+          order_amount: String(orderAmount || 0),
+          order_entity_id: String(orderEntityId || 'N/A')
+        }
+      });
       results.webengage_event = true;
       console.log('✅ WebEngage event successful');
 
@@ -189,7 +200,7 @@ async function sendToGoogleSheetsWebhook(data) {
 }
 
 async function createOrUpdateWebEngageUser(params) {
-  const { userId, email, firstname, lastname, customerId, submissionId, specialties, orderId } = params;
+  const { userId, email, firstname, lastname, customerId, submissionId, specialties, orderId, testMode } = params;
   
   const licenseCode = process.env.WEBENGAGE_LICENSE_CODE;
   const apiKey = process.env.WEBENGAGE_API_KEY;
@@ -214,7 +225,7 @@ async function createOrUpdateWebEngageUser(params) {
       pb_days_specialties: specialties.join(', '),
       pb_days_specialty_count: specialties.length,
       pb_days_order_id: orderId || 'N/A',
-      pb_days_campaign: 'PB_DAYS_OCT_2025',
+      pb_days_campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',  // ✅ Fixed
       pb_days_submission_date: new Date().toISOString(),
       source: 'PB_DAYS_MasterBox_Campaign',
       specialty_endodontist: specialties.includes('Endodontist'),
@@ -224,8 +235,9 @@ async function createOrUpdateWebEngageUser(params) {
       specialty_paedodontist: specialties.includes('Paedodontist'),
       specialty_periodontist: specialties.includes('Periodontist'),
       specialty_general_dentist: specialties.includes('General Dentist'),
-      last_campaign_participation: 'PB_DAYS_OCT_2025',
-      last_interaction_date: new Date().toISOString()
+      last_campaign_participation: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',  // ✅ Fixed
+      last_interaction_date: new Date().toISOString(),
+      test_mode: testMode || false  // ✅ Fixed: Proper boolean
     }
   };
 
@@ -245,9 +257,14 @@ async function trackWebEngageEvent({ userId, eventName, eventData }) {
   const licenseCode = process.env.WEBENGAGE_LICENSE_CODE;
   const apiKey = process.env.WEBENGAGE_API_KEY;
 
+  if (!licenseCode || !apiKey) {
+    throw new Error('WebEngage credentials not configured');
+  }
+
   const apiUrl = `https://api.webengage.com/v1/accounts/${licenseCode}/events`;
   
   console.log('WebEngage Event URL:', apiUrl);
+  console.log('Event data being sent:', eventData);  // ✅ Added debug logging
 
   const eventPayload = {
     userId,
