@@ -1,39 +1,70 @@
 let selectedCount = 0;
 let customerData = null;
+let orderData = null;
 let isSubmitting = false;
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('PB DAYS app starting...');
-    initializeApp();
-    loadPreviousSelections();
+    console.log('🎭 PB DAYS Premium Experience Starting...');
+    startCurtainAnimation();
 });
 
+function startCurtainAnimation() {
+    console.log('🎬 Starting curtain animation...');
+    
+    // After 3 seconds, start opening curtains
+    setTimeout(() => {
+        const curtainContainer = document.getElementById('curtainContainer');
+        curtainContainer.classList.add('opening');
+        
+        // After curtains are open, hide them and show main container
+        setTimeout(() => {
+            curtainContainer.style.display = 'none';
+            const mainContainer = document.getElementById('mainContainer');
+            mainContainer.classList.add('show');
+            
+            // Start the app initialization
+            initializeApp();
+            loadPreviousSelections();
+        }, 2500);
+        
+    }, 3000);
+}
+
 async function initializeApp() {
-    console.log('Initializing app...');
+    console.log('⚙️ Initializing order-based system...');
     showLoadingScreen();
     
     try {
         await getCustomerInfo();
         
         if (customerData) {
-            console.log('Customer found:', customerData.email);
-            const hasSubmitted = await checkPreviousSubmission();
-            if (hasSubmitted) {
-                showAlreadySubmittedScreen();
-                return;
+            console.log('✅ Customer session found:', customerData.email);
+            
+            // Fetch latest order for this customer
+            await getLatestOrder(customerData.email);
+            
+            if (orderData) {
+                showOrderDetails();
+                const hasSubmitted = await checkPreviousSubmission();
+                if (hasSubmitted) {
+                    console.log('ℹ️ Order already claimed MasterBox');
+                    showAlreadySubmittedScreen();
+                    return;
+                }
             }
         } else {
-            console.log('No customer data, showing fallback modal');
+            console.log('ℹ️ No customer session - showing email form');
             showEmailFallbackModal();
             return;
         }
         
     } catch (error) {
-        console.error('App initialization error:', error);
+        console.log('ℹ️ Authentication failed - using email fallback');
         showEmailFallbackModal();
         return;
     }
     
+    console.log('✅ Ready for specialty selection');
     hideLoadingScreen();
     updateSubmitButton();
 }
@@ -47,6 +78,7 @@ function hideLoadingScreen() {
 }
 
 function showEmailFallbackModal() {
+    console.log('📧 Showing premium email collection...');
     hideLoadingScreen();
     document.getElementById('emailModal').style.display = 'flex';
     
@@ -54,11 +86,9 @@ function showEmailFallbackModal() {
         e.preventDefault();
         
         const email = document.getElementById('fallbackEmail').value.trim();
-        const firstname = document.getElementById('fallbackFirstname').value.trim();
-        const lastname = document.getElementById('fallbackLastname').value.trim();
         
-        if (!email || !firstname || !lastname) {
-            alert('Please fill in all fields');
+        if (!email) {
+            alert('Please enter your email address');
             return;
         }
         
@@ -68,31 +98,62 @@ function showEmailFallbackModal() {
             return;
         }
         
-        customerData = {
-            email: email,
-            firstname: firstname,
-            lastname: lastname,
-            fallback: true
-        };
+        console.log('📧 Email submitted, fetching order...', email);
+        
+        // Show loading on button
+        const modalLoading = document.getElementById('modalLoading');
+        const modalBtnText = document.getElementById('modalBtnText');
+        modalLoading.style.display = 'inline-block';
+        modalBtnText.textContent = 'Fetching Order...';
         
         try {
-            const hasSubmitted = await checkPreviousSubmission();
-            if (hasSubmitted) {
-                document.getElementById('emailModal').style.display = 'none';
-                showAlreadySubmittedScreen();
+            await getLatestOrder(email);
+            
+            if (customerData && orderData) {
+                console.log('✅ Order fetched successfully');
+                
+                showOrderDetails();
+                
+                const hasSubmitted = await checkPreviousSubmission();
+                if (hasSubmitted) {
+                    console.log('ℹ️ Order already claimed');
+                    document.getElementById('emailModal').style.display = 'none';
+                    showAlreadySubmittedScreen();
+                } else {
+                    console.log('✅ Ready for specialty selection (email mode)');
+                    document.getElementById('emailModal').style.display = 'none';
+                    updateSubmitButton();
+                }
             } else {
-                document.getElementById('emailModal').style.display = 'none';
-                updateSubmitButton();
+                throw new Error('No recent orders found for this email');
             }
+            
         } catch (error) {
-            console.error('Error checking previous submission:', error);
-            document.getElementById('emailModal').style.display = 'none';
-            updateSubmitButton();
+            console.error('❌ Order fetch failed:', error.message);
+            modalLoading.style.display = 'none';
+            modalBtnText.textContent = 'Fetch My Order';
+            alert('Could not find any recent orders for this email address. Please check and try again.');
         }
     });
 }
 
+function showOrderDetails() {
+    if (!customerData || !orderData) return;
+    
+    console.log('📦 Showing order details');
+    
+    document.getElementById('customerName').textContent = 
+        `Welcome back, ${customerData.firstname}!`;
+    document.getElementById('orderNumber').textContent = 
+        `Order #${orderData.increment_id}`;
+    document.getElementById('orderAmount').textContent = 
+        `₹${parseFloat(orderData.grand_total).toFixed(0)}`;
+    
+    document.getElementById('orderDetailsSection').style.display = 'block';
+}
+
 function showAlreadySubmittedScreen() {
+    console.log('ℹ️ Showing already submitted screen');
     document.getElementById('formSection').style.display = 'none';
     document.getElementById('submitSection').style.display = 'none';
     document.getElementById('alreadySubmittedScreen').style.display = 'flex';
@@ -104,26 +165,26 @@ async function getCustomerInfo() {
         
         try {
             if (window.parent !== window) {
-                bearerToken = window.parent.customerToken || window.parent.localStorage.getItem('customerToken');
+                bearerToken = window.parent.customerToken || window.parent.localStorage?.getItem('customerToken');
             }
-            
-            if (!bearerToken) {
+        } catch (e) { /* Expected CORS error */ }
+        
+        if (!bearerToken) {
+            try {
                 bearerToken = localStorage.getItem('customerToken') || sessionStorage.getItem('customerToken');
-            }
-            
-            if (!bearerToken) {
-                const urlParams = new URLSearchParams(window.location.search);
-                bearerToken = urlParams.get('token');
-            }
-        } catch (error) {
-            console.log('Could not access parent window:', error.message);
+            } catch (e) { /* Storage error */ }
         }
         
         if (!bearerToken) {
-            throw new Error('No bearer token found');
+            const urlParams = new URLSearchParams(window.location.search);
+            bearerToken = urlParams.get('token');
         }
         
-        console.log('Found bearer token, calling customer API...');
+        if (!bearerToken) {
+            throw new Error('No authentication token available');
+        }
+        
+        console.log('🔑 Bearer token found, fetching customer data...');
         
         const response = await fetch('/.netlify/functions/get-customer-info', {
             method: 'POST',
@@ -136,29 +197,60 @@ async function getCustomerInfo() {
         const data = await response.json();
         
         if (data.fallback) {
-            throw new Error('Customer info not available');
+            throw new Error('Customer API unavailable');
         }
         
         customerData = data.customer;
-        console.log('Customer data loaded successfully');
         
     } catch (error) {
-        console.error('Failed to get customer info:', error);
         customerData = null;
+        throw error;
+    }
+}
+
+async function getLatestOrder(email) {
+    try {
+        console.log('📦 Fetching latest order for:', email);
+        
+        const response = await fetch('/.netlify/functions/get-latest-order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Order fetch failed');
+        }
+        
+        customerData = data.customer;
+        orderData = data.order;
+        
+        console.log('📦 Order found:', orderData.increment_id);
+        
+    } catch (error) {
+        console.error('❌ Order fetch error:', error);
         throw error;
     }
 }
 
 async function checkPreviousSubmission() {
     try {
+        if (!orderData) {
+            return false;
+        }
+        
         const response = await fetch('/.netlify/functions/check-submission', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                email: customerData.email,
-                customerId: customerData.id
+                orderId: orderData.id,
+                orderIncrementId: orderData.increment_id
             })
         });
         
@@ -167,7 +259,8 @@ async function checkPreviousSubmission() {
         if (data.hasSubmitted) {
             const submissionInfo = document.getElementById('submittedInfo');
             submissionInfo.innerHTML = `
-                <p><strong>Submitted on:</strong> ${new Date(data.submissionData.timestamp).toLocaleDateString()}</p>
+                <p><strong>Order:</strong> #${orderData.increment_id}</p>
+                <p><strong>Claimed on:</strong> ${new Date(data.submissionData.timestamp).toLocaleDateString()}</p>
                 <p><strong>Selected Specialties:</strong> ${data.submissionData.specialties}</p>
                 <p><strong>Total Count:</strong> ${data.submissionData.count}</p>
             `;
@@ -177,7 +270,7 @@ async function checkPreviousSubmission() {
         return false;
         
     } catch (error) {
-        console.error('Error checking previous submission:', error);
+        console.log('⚠️ Could not verify previous submission');
         return false;
     }
 }
@@ -231,13 +324,13 @@ function updateSubmitButton() {
         btnText.textContent = 'Select Specialties';
     } else {
         submitBtn.disabled = false;
-        btnText.textContent = 'Create My MasterBox';
+        btnText.textContent = 'Claim My MasterBox';
     }
 }
 
 async function submitForm() {
     if (isSubmitting) {
-        console.log('Already submitting...');
+        console.log('⏳ Submission already in progress...');
         return;
     }
     
@@ -248,12 +341,13 @@ async function submitForm() {
         return;
     }
     
-    if (!customerData) {
-        alert('Customer information not available. Please refresh and try again.');
+    if (!customerData || !orderData) {
+        alert('Order information not available. Please refresh and try again.');
         return;
     }
     
     isSubmitting = true;
+    console.log('🚀 Starting MasterBox claim...');
     
     const submitBtn = document.getElementById('submitBtn');
     const loading = document.getElementById('loading');
@@ -273,13 +367,13 @@ async function submitForm() {
             specialties: selectedSpecialties,
             count: selectedSpecialties.length,
             timestamp: new Date().toISOString(),
-            orderId: getOrderId(),
+            orderId: orderData.increment_id,
+            orderEntityId: orderData.id,
+            orderAmount: orderData.grand_total,
             campaign: 'PB_DAYS_OCT_2025'
         };
         
-        console.log('=== SUBMITTING DATA ===');
-        console.log('Customer Data:', customerData);
-        console.log('Submission Data:', submissionData);
+        console.log('📤 Claiming MasterBox for order:', orderData.increment_id);
         
         const response = await fetch('/.netlify/functions/submit-specialties', {
             method: 'POST',
@@ -289,22 +383,17 @@ async function submitForm() {
             body: JSON.stringify(submissionData)
         });
         
-        console.log('Response Status:', response.status);
-        
         let result;
         try {
             const responseText = await response.text();
-            console.log('Raw Response:', responseText);
             result = JSON.parse(responseText);
         } catch (parseError) {
-            console.error('JSON Parse Error:', parseError);
             throw new Error(`Server returned invalid response: ${response.status}`);
         }
         
-        console.log('Parsed Result:', result);
-        
         if (response.status === 409) {
-            alert('You have already submitted your MasterBox preferences.');
+            console.log('ℹ️ Duplicate submission detected');
+            alert('This order has already claimed its MasterBox.');
             showAlreadySubmittedScreen();
             return;
         }
@@ -317,6 +406,9 @@ async function submitForm() {
             throw new Error(result.error || 'Submission failed');
         }
         
+        console.log('✅ MasterBox claimed successfully!');
+        console.log('📧 WebEngage event sent - confirmation email will arrive automatically');
+        
         clearSelections();
         
         setTimeout(() => {
@@ -326,33 +418,15 @@ async function submitForm() {
         }, 1000);
         
     } catch (error) {
-        console.error('=== SUBMISSION ERROR ===');
-        console.error('Error:', error);
+        console.error('❌ MasterBox claim failed:', error.message);
         
         isSubmitting = false;
         submitBtn.disabled = false;
         loading.style.display = 'none';
-        btnText.textContent = 'Create My MasterBox';
+        btnText.textContent = 'Claim My MasterBox';
         
-        alert('There was an error submitting your preferences. Please try again.\n\nError: ' + error.message);
+        alert('There was an error claiming your MasterBox. Please try again.');
     }
-}
-
-function getOrderId() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const orderId = urlParams.get('order_id') || urlParams.get('orderId');
-    
-    if (orderId) return orderId;
-    
-    try {
-        if (window.parent !== window && window.parent.currentOrderId) {
-            return window.parent.currentOrderId;
-        }
-    } catch (error) {
-        console.log('Could not access parent order ID');
-    }
-    
-    return 'TEMP_' + Date.now();
 }
 
 function saveSelections() {
@@ -360,7 +434,7 @@ function saveSelections() {
         const selectedSpecialties = Array.from(document.querySelectorAll('input[name="specialties[]"]:checked')).map(cb => cb.value);
         localStorage.setItem('pb_days_selected_specialties', JSON.stringify(selectedSpecialties));
     } catch (error) {
-        console.error('Error saving selections:', error);
+        console.log('⚠️ Could not save selections');
     }
 }
 
@@ -379,10 +453,10 @@ function loadPreviousSelections() {
             });
             updateCounter();
             updateSubmitButton();
-            console.log('Loaded previous selections:', specialties);
+            console.log('📋 Restored previous selections');
         }
     } catch (error) {
-        console.error('Error loading saved selections:', error);
+        console.log('⚠️ Could not load previous selections');
     }
 }
 
@@ -390,7 +464,7 @@ function clearSelections() {
     try {
         localStorage.removeItem('pb_days_selected_specialties');
     } catch (error) {
-        console.error('Error clearing selections:', error);
+        // Not critical
     }
 }
 
