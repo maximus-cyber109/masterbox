@@ -17,6 +17,15 @@
     --glass-bg: rgba(255, 255, 255, 0.03);
     --glass-border: rgba(255, 255, 255, 0.1);
 }
+/* Mobile browser viewport fix */
+html {
+    height: -webkit-fill-available;
+}
+
+body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+}
 
 html, body {
     margin: 0;
@@ -768,13 +777,15 @@ body {
     font-weight: 700;
 }
 
-/* Submit Button - Higher Position */
-/* Submit Button - MUCH HIGHER Position */
+/* Submit Button - Sticky at Bottom (Always Visible) */
 .submit-area {
-    padding: 0.5rem 1rem 0.75rem;
+    padding: 0.75rem 1rem;
     border-top: 1px solid var(--glass-border);
     margin-top: auto;
     background: var(--bg-black);
+    position: sticky;
+    bottom: 0;
+    z-index: 100;
 }
 
 .submit-btn {
