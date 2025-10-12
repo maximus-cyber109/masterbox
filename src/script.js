@@ -1,34 +1,29 @@
-// Global variables
 let selectedCount = 0;
 let customerData = null;
 let isSubmitting = false;
 
-// Initialize app
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('PB DAYS app starting...');
     initializeApp();
     loadPreviousSelections();
 });
 
 async function initializeApp() {
-    console.log('Initializing PB DAYS app...');
-    
-    // Show loading screen
+    console.log('Initializing app...');
     showLoadingScreen();
     
     try {
-        // First try to get customer info from Magento session
         await getCustomerInfo();
         
         if (customerData) {
-            console.log('Customer data found:', customerData);
-            // Check if user already submitted
+            console.log('Customer found:', customerData.email);
             const hasSubmitted = await checkPreviousSubmission();
             if (hasSubmitted) {
                 showAlreadySubmittedScreen();
                 return;
             }
         } else {
-            // Show email fallback modal
+            console.log('No customer data, showing fallback modal');
             showEmailFallbackModal();
             return;
         }
@@ -39,7 +34,6 @@ async function initializeApp() {
         return;
     }
     
-    // Hide loading screen and show form
     hideLoadingScreen();
     updateSubmitButton();
 }
@@ -56,26 +50,24 @@ function showEmailFallbackModal() {
     hideLoadingScreen();
     document.getElementById('emailModal').style.display = 'flex';
     
-    document.getElementById('emailForm').addEventListener('submit', function(e) {
+    document.getElementById('emailForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const email = document.getElementById('fallbackEmail').value;
-        const firstname = document.getElementById('fallbackFirstname').value;
-        const lastname = document.getElementById('fallbackLastname').value;
+        const email = document.getElementById('fallbackEmail').value.trim();
+        const firstname = document.getElementById('fallbackFirstname').value.trim();
+        const lastname = document.getElementById('fallbackLastname').value.trim();
         
         if (!email || !firstname || !lastname) {
             alert('Please fill in all fields');
             return;
         }
         
-        // Validate email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             alert('Please enter a valid email address');
             return;
         }
         
-        // Set customer data from form
         customerData = {
             email: email,
             firstname: firstname,
@@ -83,22 +75,20 @@ function showEmailFallbackModal() {
             fallback: true
         };
         
-        // Check for previous submission
-        checkPreviousSubmission().then(hasSubmitted => {
+        try {
+            const hasSubmitted = await checkPreviousSubmission();
             if (hasSubmitted) {
                 document.getElementById('emailModal').style.display = 'none';
                 showAlreadySubmittedScreen();
             } else {
-                // Hide modal and show form
                 document.getElementById('emailModal').style.display = 'none';
                 updateSubmitButton();
             }
-        }).catch(error => {
+        } catch (error) {
             console.error('Error checking previous submission:', error);
-            // Continue with form anyway
             document.getElementById('emailModal').style.display = 'none';
             updateSubmitButton();
-        });
+        }
     });
 }
 
@@ -110,33 +100,30 @@ function showAlreadySubmittedScreen() {
 
 async function getCustomerInfo() {
     try {
-        // Try to get bearer token from parent window (Magento)
         let bearerToken = null;
         
-        // Try different methods to get token
         try {
-            // Method 1: From parent window if in iframe
             if (window.parent !== window) {
                 bearerToken = window.parent.customerToken || window.parent.localStorage.getItem('customerToken');
             }
             
-            // Method 2: From current window
             if (!bearerToken) {
                 bearerToken = localStorage.getItem('customerToken') || sessionStorage.getItem('customerToken');
             }
             
-            // Method 3: From URL parameters (if passed)
             if (!bearerToken) {
                 const urlParams = new URLSearchParams(window.location.search);
                 bearerToken = urlParams.get('token');
             }
         } catch (error) {
-            console.log('Could not access parent window or get token:', error.message);
+            console.log('Could not access parent window:', error.message);
         }
         
         if (!bearerToken) {
             throw new Error('No bearer token found');
         }
+        
+        console.log('Found bearer token, calling customer API...');
         
         const response = await fetch('/.netlify/functions/get-customer-info', {
             method: 'POST',
@@ -153,7 +140,7 @@ async function getCustomerInfo() {
         }
         
         customerData = data.customer;
-        console.log('Customer data loaded:', customerData);
+        console.log('Customer data loaded successfully');
         
     } catch (error) {
         console.error('Failed to get customer info:', error);
@@ -178,7 +165,6 @@ async function checkPreviousSubmission() {
         const data = await response.json();
         
         if (data.hasSubmitted) {
-            // Show submission info
             const submissionInfo = document.getElementById('submittedInfo');
             submissionInfo.innerHTML = `
                 <p><strong>Submitted on:</strong> ${new Date(data.submissionData.timestamp).toLocaleDateString()}</p>
@@ -192,12 +178,11 @@ async function checkPreviousSubmission() {
         
     } catch (error) {
         console.error('Error checking previous submission:', error);
-        return false; // Assume not submitted if we can't check
+        return false;
     }
 }
 
 function toggleSpecialty(specialtyId) {
-    // Prevent interaction if submitting
     if (isSubmitting) return;
     
     const checkbox = document.getElementById(specialtyId);
@@ -216,12 +201,10 @@ function toggleSpecialty(specialtyId) {
     updateCounter();
     updateSubmitButton();
     
-    // Add haptic feedback simulation
     if (navigator.vibrate) {
         navigator.vibrate(10);
     }
     
-    // Store selection in localStorage as backup
     saveSelections();
 }
 
@@ -253,9 +236,8 @@ function updateSubmitButton() {
 }
 
 async function submitForm() {
-    // Prevent double submission
     if (isSubmitting) {
-        console.log('Submission already in progress');
+        console.log('Already submitting...');
         return;
     }
     
@@ -271,20 +253,17 @@ async function submitForm() {
         return;
     }
     
-    // Set submitting state
     isSubmitting = true;
     
     const submitBtn = document.getElementById('submitBtn');
     const loading = document.getElementById('loading');
     const btnText = document.getElementById('btnText');
     
-    // Show loading state
     submitBtn.disabled = true;
     loading.style.display = 'inline-block';
     btnText.textContent = 'Processing...';
     
     try {
-        // Collect form data
         const selectedSpecialties = Array.from(checkedBoxes).map(cb => cb.value);
         const submissionData = {
             email: customerData.email,
@@ -298,7 +277,9 @@ async function submitForm() {
             campaign: 'PB_DAYS_OCT_2025'
         };
         
-        console.log('Submitting data:', submissionData);
+        console.log('=== SUBMITTING DATA ===');
+        console.log('Customer Data:', customerData);
+        console.log('Submission Data:', submissionData);
         
         const response = await fetch('/.netlify/functions/submit-specialties', {
             method: 'POST',
@@ -308,23 +289,36 @@ async function submitForm() {
             body: JSON.stringify(submissionData)
         });
         
-        const result = await response.json();
+        console.log('Response Status:', response.status);
+        
+        let result;
+        try {
+            const responseText = await response.text();
+            console.log('Raw Response:', responseText);
+            result = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('JSON Parse Error:', parseError);
+            throw new Error(`Server returned invalid response: ${response.status}`);
+        }
+        
+        console.log('Parsed Result:', result);
         
         if (response.status === 409) {
-            // Duplicate submission
             alert('You have already submitted your MasterBox preferences.');
             showAlreadySubmittedScreen();
             return;
         }
         
         if (!response.ok) {
+            throw new Error(result.error || `Server error: ${response.status}`);
+        }
+        
+        if (!result.success) {
             throw new Error(result.error || 'Submission failed');
         }
         
-        // Clear stored selections
         clearSelections();
         
-        // Show success screen
         setTimeout(() => {
             document.getElementById('formSection').style.display = 'none';
             document.getElementById('submitSection').style.display = 'none';
@@ -332,26 +326,24 @@ async function submitForm() {
         }, 1000);
         
     } catch (error) {
-        console.error('Submission error:', error);
+        console.error('=== SUBMISSION ERROR ===');
+        console.error('Error:', error);
         
-        // Reset UI
+        isSubmitting = false;
         submitBtn.disabled = false;
         loading.style.display = 'none';
         btnText.textContent = 'Create My MasterBox';
-        isSubmitting = false;
         
-        alert('There was an error submitting your preferences. Please try again.');
+        alert('There was an error submitting your preferences. Please try again.\n\nError: ' + error.message);
     }
 }
 
 function getOrderId() {
-    // Try to get order ID from various sources
     const urlParams = new URLSearchParams(window.location.search);
     const orderId = urlParams.get('order_id') || urlParams.get('orderId');
     
     if (orderId) return orderId;
     
-    // Try to get from parent window if in iframe
     try {
         if (window.parent !== window && window.parent.currentOrderId) {
             return window.parent.currentOrderId;
@@ -360,11 +352,9 @@ function getOrderId() {
         console.log('Could not access parent order ID');
     }
     
-    // Generate a temporary ID based on timestamp
     return 'TEMP_' + Date.now();
 }
 
-// Helper functions for localStorage management
 function saveSelections() {
     try {
         const selectedSpecialties = Array.from(document.querySelectorAll('input[name="specialties[]"]:checked')).map(cb => cb.value);
@@ -404,5 +394,4 @@ function clearSelections() {
     }
 }
 
-// Initialize submit button state
 updateSubmitButton();
