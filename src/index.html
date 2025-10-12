@@ -50,7 +50,7 @@
             </div>
         </div>
 
-        <!-- Order Card - Simplified -->
+        <!-- Order Card -->
         <div class="order-card" id="orderCard">
             <div class="welcome-section">
                 <h3 id="customerName">Welcome back!</h3>
@@ -127,37 +127,6 @@
                 <p>This order has already claimed its Custom MasterBox</p>
                 <div class="info" id="submissionInfo"></div>
             </div>
-
-            <!-- Success with 3D Box -->
-            <div class="result" id="success">
-                <!-- 3D Interactive MasterBox -->
-                <div class="masterbox-3d-container" id="masterboxContainer">
-                    <div class="masterbox-3d" id="masterbox3D">
-                        <img src="https://email-editor-resources.s3.amazonaws.com/images/82618240/ChatGPT%20Image%20Oct%2013%2C%202025%2C%2001_53_38%20AM.png" alt="MasterBox" class="box-image">
-                    </div>
-                    <p class="interaction-hint">Touch & Drag to Spin</p>
-                </div>
-
-                <h2>MasterBox Confirmed!</h2>
-                <p class="success-message-main">Your Custom MasterBox will be delivered along with your order</p>
-                <div class="success-badge">Custom MasterBox Reserved</div>
-
-                <!-- Action Buttons -->
-                <div class="action-buttons">
-                    <button class="action-btn share-btn" id="shareBtn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                        </svg>
-                        Share with Doctors
-                    </button>
-                    <button class="action-btn return-btn" id="returnBtn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                        </svg>
-                        Return to PinkBlue
-                    </button>
-                </div>
-            </div>
         </div>
 
         <!-- Submit Button -->
@@ -166,6 +135,55 @@
                 <span class="submit-loading" id="submitLoading"></span>
                 <span id="submitText">Select Specialties</span>
             </button>
+        </div>
+    </div>
+
+    <!-- Success Modal Popup with Glowing Box -->
+    <div class="success-modal" id="successModal">
+        <div class="success-backdrop" id="successBackdrop"></div>
+        
+        <!-- Floating Particles -->
+        <div class="particles-container">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
+        
+        <div class="success-modal-content">
+            <!-- 3D Tilting MasterBox with Glow -->
+            <div class="masterbox-container">
+                <div class="box-glow-ring"></div>
+                <div class="masterbox-tilting" id="masterboxTilt">
+                    <img src="https://email-editor-resources.s3.amazonaws.com/images/82618240/ChatGPT%20Image%20Oct%2013%2C%202025%2C%2001_53_38%20AM.png" alt="MasterBox" class="box-img">
+                </div>
+            </div>
+
+            <h2 class="success-title">MasterBox Confirmed!</h2>
+            <p class="success-desc">Your Custom MasterBox will be delivered along with your order</p>
+            <div class="success-badge-modal">Custom MasterBox Reserved</div>
+
+            <!-- Action Buttons -->
+            <div class="modal-actions">
+                <button class="modal-action-btn share-modal-btn" id="shareModalBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                    Share with Doctors
+                </button>
+                <button class="modal-action-btn return-modal-btn" id="returnModalBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    </svg>
+                    Return to PinkBlue
+                </button>
+            </div>
         </div>
     </div>
 
