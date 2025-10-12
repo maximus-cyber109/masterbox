@@ -11,7 +11,7 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
-  console.log('Fetching latest order...');
+  console.log('=== GET LATEST ORDER START ===');
 
   try {
     const { email } = JSON.parse(event.body || '{}');
@@ -24,93 +24,167 @@ exports.handler = async (event, context) => {
     const apiToken = process.env.MAGENTO_API_TOKEN;
 
     if (!magentoBaseUrl || !apiToken) {
-      throw new Error('Magento configuration missing');
+      console.error('Missing Magento configuration');
+      throw new Error('Magento API configuration missing');
     }
 
+    console.log('Magento Base URL:', magentoBaseUrl);
     console.log('Searching for customer by email:', email);
 
-    // First, get customer by email
+    // Step 1: Search for customer by email using admin token
     const customerSearchUrl = `${magentoBaseUrl}/rest/V1/customers/search`;
+    
+    console.log('Customer search URL:', customerSearchUrl);
+
     const customerResponse = await axios.get(customerSearchUrl, {
       headers: {
         'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json'
       },
       params: {
-        'searchCriteria[filter_groups][0][filters][0][field]': 'email',
-        'searchCriteria[filter_groups][0][filters][0][value]': email,
-        'searchCriteria[filter_groups][0][filters][0][condition_type]': 'eq',
-        'searchCriteria[page_size]': 1
+        'searchCriteria[filterGroups][0][filters][0][field]': 'email',
+        'searchCriteria[filterGroups][0][filters][0][value]': email,
+        'searchCriteria[filterGroups][0][filters][0][conditionType]': 'eq',
+        'searchCriteria[pageSize]': 1
       },
-      timeout: 15000
+      timeout: 15000,
+      validateStatus: function (status) {
+        return status < 500; // Don't throw on 4xx errors
+      }
     });
 
-    const customers = customerResponse.data.items;
+    console.log('Customer search response status:', customerResponse.status);
+
+    if (customerResponse.status === 404) {
+      // Customer not found
+      throw new Error('Customer not found with this email address');
+    }
+
+    if (customerResponse.status >= 400) {
+      console.error('Customer search failed:', customerResponse.status, customerResponse.data);
+      throw new Error(`Customer search failed: ${customerResponse.status}`);
+    }
+
+    const customers = customerResponse.data?.items || [];
+    
     if (!customers || customers.length === 0) {
-      throw new Error('Customer not found');
+      console.log('No customers found for email:', email);
+      throw new Error('Customer not found with this email address');
     }
 
     const customer = customers[0];
-    console.log('Customer found:', customer.firstname, customer.lastname);
+    console.log('Customer found:', {
+      id: customer.id,
+      email: customer.email,
+      firstname: customer.firstname,
+      lastname: customer.lastname
+    });
 
-    // Get customer's latest order
+    // Step 2: Get customer's orders using admin token
     const ordersUrl = `${magentoBaseUrl}/rest/V1/orders`;
+    
+    console.log('Fetching orders for customer ID:', customer.id);
+
     const ordersResponse = await axios.get(ordersUrl, {
       headers: {
         'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json'
       },
       params: {
-        'searchCriteria[filter_groups][0][filters][0][field]': 'customer_email',
-        'searchCriteria[filter_groups][0][filters][0][value]': email,
-        'searchCriteria[filter_groups][0][filters][0][condition_type]': 'eq',
-        'searchCriteria[sort_orders][0][field]': 'created_at',
-        'searchCriteria[sort_orders][0][direction]': 'DESC',
-        'searchCriteria[page_size]': 1
+        'searchCriteria[filterGroups][0][filters][0][field]': 'customer_id',
+        'searchCriteria[filterGroups][0][filters][0][value]': customer.id,
+        'searchCriteria[filterGroups][0][filters][0][conditionType]': 'eq',
+        'searchCriteria[sortOrders][0][field]': 'created_at',
+        'searchCriteria[sortOrders][0][direction]': 'DESC',
+        'searchCriteria[pageSize]': 1
       },
-      timeout: 15000
+      timeout: 15000,
+      validateStatus: function (status) {
+        return status < 500;
+      }
     });
 
-    const orders = ordersResponse.data.items;
+    console.log('Orders response status:', ordersResponse.status);
+
+    if (ordersResponse.status >= 400) {
+      console.error('Orders fetch failed:', ordersResponse.status, ordersResponse.data);
+      throw new Error(`Orders fetch failed: ${ordersResponse.status}`);
+    }
+
+    const orders = ordersResponse.data?.items || [];
+    
     if (!orders || orders.length === 0) {
+      console.log('No orders found for customer');
       throw new Error('No orders found for this customer');
     }
 
     const latestOrder = orders[0];
-    console.log('Latest order found:', latestOrder.increment_id);
+    console.log('Latest order found:', {
+      entity_id: latestOrder.entity_id,
+      increment_id: latestOrder.increment_id,
+      status: latestOrder.status,
+      grand_total: latestOrder.grand_total
+    });
+
+    // Step 3: Return success response
+    const response = {
+      success: true,
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        firstname: customer.firstname || 'Customer',
+        lastname: customer.lastname || 'User'
+      },
+      order: {
+        id: latestOrder.entity_id,
+        increment_id: latestOrder.increment_id,
+        status: latestOrder.status,
+        created_at: latestOrder.created_at,
+        grand_total: latestOrder.grand_total,
+        currency_code: latestOrder.order_currency_code || 'INR'
+      }
+    };
+
+    console.log('=== SUCCESS ===');
+    console.log('Returning response:', JSON.stringify(response, null, 2));
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        success: true,
-        customer: {
-          id: customer.id,
-          email: customer.email,
-          firstname: customer.firstname,
-          lastname: customer.lastname
-        },
-        order: {
-          id: latestOrder.entity_id,
-          increment_id: latestOrder.increment_id,
-          status: latestOrder.status,
-          created_at: latestOrder.created_at,
-          grand_total: latestOrder.grand_total,
-          currency_code: latestOrder.order_currency_code
-        }
-      })
+      body: JSON.stringify(response)
     };
 
   } catch (error) {
-    console.error('Order fetch error:', error.message);
+    console.error('=== ORDER FETCH ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error details:', error.response?.data || 'No additional details');
+    console.error('Error stack:', error.stack);
+
+    // Determine appropriate status code
+    let statusCode = 500;
+    let errorMessage = error.message;
+
+    if (error.message.includes('Customer not found')) {
+      statusCode = 404;
+      errorMessage = 'No customer found with this email address';
+    } else if (error.message.includes('No orders found')) {
+      statusCode = 404;
+      errorMessage = 'No recent orders found for this customer';
+    } else if (error.message.includes('configuration missing')) {
+      statusCode = 500;
+      errorMessage = 'Server configuration error';
+    }
     
     return {
-      statusCode: 500,
+      statusCode: statusCode,
       headers,
       body: JSON.stringify({
         success: false,
-        error: error.message,
-        details: error.response?.data || 'Order fetch failed'
+        error: errorMessage,
+        details: {
+          timestamp: new Date().toISOString(),
+          function: 'get-latest-order'
+        }
       })
     };
   }
