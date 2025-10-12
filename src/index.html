@@ -7,140 +7,204 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Premium Wave Animation -->
-    <div class="wave-container" id="waveContainer">
-        <div class="wave-animation">
-            <div class="wave wave-1"></div>
-            <div class="wave wave-2"></div>
-            <div class="wave wave-3"></div>
-        </div>
-        <div class="wave-content">
-            <div class="check-circle">
-                <div class="check-mark">✓</div>
+    <!-- Audio Wave Loading Animation -->
+    <div class="wave-loading-container" id="waveLoadingContainer">
+        <div class="audio-wave-animation">
+            <div class="wave-bars">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
             </div>
-            <h1 class="wave-title">Thank You For Your Order!</h1>
-            <p class="wave-subtitle">Your Custom MasterBox awaits...</p>
+        </div>
+        
+        <div class="loading-content">
+            <div class="success-circle">
+                <div class="checkmark">✓</div>
+            </div>
+            <h1 class="loading-title">Thank You For Your Order!</h1>
+            <p class="loading-subtitle">Your Custom MasterBox awaits...</p>
         </div>
     </div>
 
-    <div class="container" id="mainContainer">
-        <!-- Header Section -->
-        <div class="header-section">
-            <div class="pb-days-banner">PB DAYS</div>
-            <div class="date-banner">October 15 – 17</div>
-            <div class="main-title">Choose Your Specialties</div>
-            <div class="subtitle">Get Your Custom MasterBox</div>
+    <!-- Main App Container -->
+    <div class="main-app" id="mainApp">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand-section">
+                <h1 class="brand-name">PB DAYS</h1>
+                <p class="brand-date">October 15 – 17</p>
+            </div>
+            <div class="header-divider"></div>
+            <div class="title-section">
+                <h2 class="page-title">Choose Your Specialties</h2>
+                <p class="page-desc">Get Your Custom MasterBox</p>
+            </div>
+        </header>
+
+        <!-- Loading State -->
+        <div class="app-loading" id="appLoading">
+            <div class="loading-spinner">
+                <div class="spinner-dot"></div>
+                <div class="spinner-dot"></div>
+                <div class="spinner-dot"></div>
+            </div>
+            <p class="loading-message">Loading your session...</p>
         </div>
 
-        <!-- Loading Screen -->
-        <div class="loading-screen" id="loadingScreen">
-            <div class="spinner"></div>
-            <p>Loading your session...</p>
-        </div>
-
-        <!-- Email Modal -->
-        <div class="modal-overlay" id="emailModal" style="display: none;">
-            <div class="modal-content">
-                <div class="modal-icon">📧</div>
-                <h3>Enter Your Email</h3>
-                <p>We'll fetch your order details automatically</p>
-                <form id="emailForm">
-                    <input type="email" id="fallbackEmail" placeholder="your@email.com" required>
-                    <button type="submit">
-                        <span class="btn-loading" id="modalLoading"></span>
-                        <span id="modalBtnText">Fetch My Order</span>
+        <!-- Email Input Modal -->
+        <div class="email-modal" id="emailModal">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <div class="modal-emoji">📧</div>
+                    <h3>Enter Your Email</h3>
+                    <p>We'll fetch your order details automatically</p>
+                </div>
+                <form class="email-form" id="emailForm">
+                    <div class="form-group">
+                        <input type="email" id="userEmail" placeholder="your@email.com" required>
+                    </div>
+                    <button type="submit" class="modal-button" id="fetchButton">
+                        <span class="button-loader" id="fetchLoader"></span>
+                        <span class="button-label" id="fetchLabel">Fetch My Order</span>
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- Order Details -->
-        <div class="order-details-section" id="orderDetailsSection" style="display: none;">
-            <div class="order-card">
-                <div class="order-info">
-                    <h3 id="customerName">Welcome back!</h3>
-                    <div class="order-meta">
-                        <span class="order-number" id="orderNumber">Order #12345</span>
-                        <span class="order-amount" id="orderAmount">₹2,500</span>
+        <!-- Order Info Card -->
+        <div class="order-info-card" id="orderInfoCard">
+            <div class="order-details">
+                <div class="customer-welcome">
+                    <h3 id="customerWelcome">Welcome back!</h3>
+                </div>
+                <div class="order-summary">
+                    <span class="order-id" id="orderIdDisplay">Order #12345</span>
+                    <span class="order-value" id="orderValueDisplay">₹2,500</span>
+                </div>
+            </div>
+            <div class="eligibility-badge">
+                <span class="badge-text">🎁 MasterBox Eligible</span>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="content-area" id="contentArea">
+            <!-- Specialty Selection -->
+            <section class="specialty-section" id="specialtySection">
+                <div class="section-title">
+                    <h2>Select Your Specialties</h2>
+                    <p>Choose all that apply to create your perfect MasterBox</p>
+                </div>
+                
+                <div class="progress-indicator" id="progressIndicator">
+                    <span class="progress-text" id="progressText">No specialties selected</span>
+                    <div class="progress-track">
+                        <div class="progress-bar" id="progressBar"></div>
                     </div>
                 </div>
-                <div class="masterbox-badge">🎁 MasterBox Eligible</div>
-            </div>
-        </div>
+                
+                <div class="specialty-grid">
+                    <div class="specialty-option" data-value="Endodontist">
+                        <div class="option-content">
+                            <div class="option-emoji">🦷</div>
+                            <div class="option-name">Endodontist</div>
+                            <div class="selection-dot"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="specialty-option" data-value="Prosthodontist">
+                        <div class="option-content">
+                            <div class="option-emoji">🔧</div>
+                            <div class="option-name">Prosthodontist</div>
+                            <div class="selection-dot"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="specialty-option" data-value="Orthodontist">
+                        <div class="option-content">
+                            <div class="option-emoji">🦷</div>
+                            <div class="option-name">Orthodontist</div>
+                            <div class="selection-dot"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="specialty-option" data-value="Oral And Maxillofacial Surgeon">
+                        <div class="option-content">
+                            <div class="option-emoji">⚕️</div>
+                            <div class="option-name">Oral & Maxillofacial Surgeon</div>
+                            <div class="selection-dot"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="specialty-option" data-value="Paedodontist">
+                        <div class="option-content">
+                            <div class="option-emoji">👶</div>
+                            <div class="option-name">Paedodontist</div>
+                            <div class="selection-dot"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="specialty-option" data-value="Periodontist">
+                        <div class="option-content">
+                            <div class="option-emoji">🔬</div>
+                            <div class="option-name">Periodontist</div>
+                            <div class="selection-dot"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="specialty-option" data-value="General Dentist">
+                        <div class="option-content">
+                            <div class="option-emoji">👨‍⚕️</div>
+                            <div class="option-name">General Dentist</div>
+                            <div class="selection-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <!-- Already Submitted Screen -->
-        <div class="already-submitted-screen" id="alreadySubmittedScreen" style="display: none;">
-            <div class="success-icon">✓</div>
-            <div class="success-title">MasterBox Already Claimed!</div>
-            <div class="success-message">This order has already claimed its Custom MasterBox</div>
-            <div class="submitted-info" id="submittedInfo"></div>
-        </div>
+            <!-- Already Submitted State -->
+            <section class="status-section" id="alreadySubmittedState">
+                <div class="status-content">
+                    <div class="status-icon warning">⚠️</div>
+                    <h2>MasterBox Already Claimed</h2>
+                    <p>This order has already claimed its Custom MasterBox</p>
+                    <div class="submission-info" id="submissionInfo"></div>
+                </div>
+            </section>
 
-        <!-- Form Section -->
-        <div class="form-section" id="formSection">
-            <h2 class="form-title">Select Your Specialties</h2>
-            <p class="form-subtitle">Choose all that apply to create your perfect MasterBox</p>
-            
-            <div class="selection-counter" id="selectionCounter">No specialties selected</div>
-            
-            <div class="specialties-grid">
-                <div class="specialty-item" onclick="toggleSpecialty('endodontist')">
-                    <div class="specialty-icon">🦷</div>
-                    <div class="specialty-name">Endodontist</div>
-                    <input type="checkbox" id="endodontist" name="specialties[]" value="Endodontist" class="specialty-checkbox">
+            <!-- Success State -->
+            <section class="status-section" id="successState">
+                <div class="status-content">
+                    <div class="status-icon success">✓</div>
+                    <h2>MasterBox Confirmed!</h2>
+                    <p>Your Custom MasterBox will be delivered with your order</p>
+                    <div class="success-message">Custom MasterBox Reserved</div>
                 </div>
-                
-                <div class="specialty-item" onclick="toggleSpecialty('prosthodontist')">
-                    <div class="specialty-icon">🔧</div>
-                    <div class="specialty-name">Prosthodontist</div>
-                    <input type="checkbox" id="prosthodontist" name="specialties[]" value="Prosthodontist" class="specialty-checkbox">
-                </div>
-                
-                <div class="specialty-item" onclick="toggleSpecialty('orthodontist')">
-                    <div class="specialty-icon">🦷</div>
-                    <div class="specialty-name">Orthodontist</div>
-                    <input type="checkbox" id="orthodontist" name="specialties[]" value="Orthodontist" class="specialty-checkbox">
-                </div>
-                
-                <div class="specialty-item" onclick="toggleSpecialty('oral_surgeon')">
-                    <div class="specialty-icon">⚕️</div>
-                    <div class="specialty-name">Oral & Maxillofacial Surgeon</div>
-                    <input type="checkbox" id="oral_surgeon" name="specialties[]" value="Oral And Maxillofacial Surgeon" class="specialty-checkbox">
-                </div>
-                
-                <div class="specialty-item" onclick="toggleSpecialty('paedodontist')">
-                    <div class="specialty-icon">👶</div>
-                    <div class="specialty-name">Paedodontist</div>
-                    <input type="checkbox" id="paedodontist" name="specialties[]" value="Paedodontist" class="specialty-checkbox">
-                </div>
-                
-                <div class="specialty-item" onclick="toggleSpecialty('periodontist')">
-                    <div class="specialty-icon">🔬</div>
-                    <div class="specialty-name">Periodontist</div>
-                    <input type="checkbox" id="periodontist" name="specialties[]" value="Periodontist" class="specialty-checkbox">
-                </div>
-                
-                <div class="specialty-item" onclick="toggleSpecialty('general_dentist')">
-                    <div class="specialty-icon">👨‍⚕️</div>
-                    <div class="specialty-name">General Dentist</div>
-                    <input type="checkbox" id="general_dentist" name="specialties[]" value="General Dentist" class="specialty-checkbox">
-                </div>
-            </div>
-        </div>
-
-        <!-- Success Screen -->
-        <div class="success-screen" id="successScreen" style="display: none;">
-            <div class="success-icon">✓</div>
-            <div class="success-title">MasterBox Confirmed!</div>
-            <div class="success-message">Your Custom MasterBox will be delivered with your order</div>
-            <div class="success-highlight">Custom MasterBox Reserved</div>
-        </div>
+            </section>
+        </main>
 
         <!-- Submit Button -->
-        <div class="submit-section" id="submitSection">
-            <button type="submit" class="submit-btn" id="submitBtn" onclick="submitForm()">
-                <span class="loading" id="loading"></span>
-                <span id="btnText">Claim My MasterBox</span>
+        <div class="submit-area" id="submitArea">
+            <button class="submit-button" id="submitButton">
+                <span class="submit-loader" id="submitLoader"></span>
+                <span class="submit-text" id="submitText">Select Specialties</span>
             </button>
         </div>
     </div>
