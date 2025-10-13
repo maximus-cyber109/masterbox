@@ -67,18 +67,30 @@ class PBDaysApp {
         this.showAppLoading();
         
         try {
-            await this.getCustomerInformation();
+            // FIRST: Check for email in URL parameter (from Magento)
+            const urlParams = new URLSearchParams(window.location.search);
+            const emailParam = urlParams.get('email');
             
-            if (this.customerData) {
-                console.log('✅ Customer found:', this.customerData.email);
+            if (emailParam) {
+                // Email passed via query parameter from Magento
+                console.log('📧 Email found in URL parameter:', emailParam);
                 
-                if (this.customerData.email.includes('-forcefetch')) {
+                // Check for test mode
+                if (emailParam.includes('-forcefetch')) {
                     this.activateTestMode();
+                    this.customerData = {
+                        id: `TEST_${Date.now()}`,
+                        email: emailParam.replace('-forcefetch', ''),
+                        firstname: 'Test',
+                        lastname: 'User'
+                    };
                     this.generateMockOrder();
                     this.displayOrderInfo();
                 } else {
-                    await this.fetchCustomerOrder(this.customerData.email);
-                    if (this.orderData) {
+                    // Fetch real order using email
+                    await this.fetchCustomerOrder(emailParam);
+                    
+                    if (this.customerData && this.orderData) {
                         this.displayOrderInfo();
                         
                         const alreadySubmitted = await this.checkExistingSubmission();
@@ -86,10 +98,36 @@ class PBDaysApp {
                             this.showAlreadySubmittedState();
                             return;
                         }
+                    } else {
+                        throw new Error('No orders found for this email');
                     }
                 }
             } else {
-                throw new Error('No customer data available');
+                // FALLBACK: Try existing bearer token method
+                await this.getCustomerInformation();
+                
+                if (this.customerData) {
+                    console.log('✅ Customer found:', this.customerData.email);
+                    
+                    if (this.customerData.email.includes('-forcefetch')) {
+                        this.activateTestMode();
+                        this.generateMockOrder();
+                        this.displayOrderInfo();
+                    } else {
+                        await this.fetchCustomerOrder(this.customerData.email);
+                        if (this.orderData) {
+                            this.displayOrderInfo();
+                            
+                            const alreadySubmitted = await this.checkExistingSubmission();
+                            if (alreadySubmitted) {
+                                this.showAlreadySubmittedState();
+                                return;
+                            }
+                        }
+                    }
+                } else {
+                    throw new Error('No customer data available');
+                }
             }
         } catch (error) {
             console.log('ℹ️ No customer session, showing email modal');
