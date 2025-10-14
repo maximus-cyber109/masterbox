@@ -24,11 +24,11 @@ class PBDaysApp {
     async initialize() {
         console.log('⚙️ Initializing application...');
         
-        // Show loading screen with animation
+        // Show loading screen briefly
         this.showScreen('loadingScreen');
         
-        // Wait for loading animation (2.6s total: 2s spin + 0.6s check)
-        await this.sleep(2600);
+        // Wait 2.5 seconds for loading animation
+        await this.sleep(2500);
         
         // Get email from URL or prompt
         const email = this.getEmailFromURL();
@@ -38,7 +38,8 @@ class PBDaysApp {
             await this.fetchLatestOrder(email);
         } else {
             console.log('ℹ️ No customer session, showing email modal');
-            this.showEmailModal();
+            this.hideScreen('loadingScreen');
+            this.showModal('emailModal');
         }
         
         this.setupEventListeners();
@@ -151,6 +152,7 @@ class PBDaysApp {
 
         } catch (error) {
             console.error('❌ Error fetching order:', error);
+            this.hideScreen('loadingScreen');
             this.showError(
                 'Unable to Fetch Order',
                 'We couldn\'t retrieve your order details. Please contact support@pinkblue.in'
@@ -190,6 +192,7 @@ class PBDaysApp {
             nameEl.textContent = name;
         }
 
+        this.hideScreen('loadingScreen');
         this.showScreen('mainScreen');
     }
 
@@ -197,6 +200,7 @@ class PBDaysApp {
         document.getElementById('claimedOrderId').textContent = `#${data.orderId || 'N/A'}`;
         document.getElementById('claimedSpecialties').textContent = data.specialties || 'N/A';
         
+        this.hideScreen('loadingScreen');
         this.showScreen('alreadyClaimedScreen');
     }
 
@@ -273,9 +277,6 @@ class PBDaysApp {
         }
 
         this.hideModal('emailModal');
-        this.showScreen('loadingScreen');
-        
-        await this.sleep(2600); // Loading animation
         await this.fetchLatestOrder(email);
     }
 
@@ -299,6 +300,13 @@ class PBDaysApp {
         }
     }
 
+    hideScreen(screenId) {
+        const screen = document.getElementById(screenId);
+        if (screen) {
+            screen.classList.remove('active');
+        }
+    }
+
     showModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
@@ -310,18 +318,6 @@ class PBDaysApp {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('active');
-        }
-    }
-
-    showEmailModal() {
-        this.hideScreen('loadingScreen');
-        this.showModal('emailModal');
-    }
-
-    hideScreen(screenId) {
-        const screen = document.getElementById(screenId);
-        if (screen) {
-            screen.classList.remove('active');
         }
     }
 
@@ -338,6 +334,5 @@ class PBDaysApp {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('⚙️ Initializing application...');
     new PBDaysApp();
 });
