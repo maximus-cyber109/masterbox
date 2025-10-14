@@ -30,40 +30,34 @@ exports.handler = async (event, context) => {
             testMode
         } = submissionData;
 
-        // Validate required fields
+        // Validate
         if (!email || !specialties || !orderId) {
             return {
                 statusCode: 400,
                 headers,
                 body: JSON.stringify({
                     success: false,
-                    error: 'Missing required fields: email, specialties, or orderId'
+                    error: 'Missing required fields'
                 })
             };
         }
 
-        console.log('Submission data:', {
-            email,
-            orderId,
-            specialties: Array.isArray(specialties) ? specialties.join(', ') : specialties
-        });
+        console.log('Submission:', { email, orderId, specialties });
 
-        // Prepare Google Sheets data
+        // ✅ CORRECT FIELD NAMES matching Google Script expectations
         const sheetData = {
-            email: email,
-            customer_id: customerId || 'N/A',
-            firstname: firstname || 'N/A',
-            lastname: lastname || 'N/A',
-            specialties: Array.isArray(specialties) ? specialties.join(', ') : specialties,
-            order_id: orderId,
-            specialty_count: Array.isArray(specialties) ? specialties.length : 0,
-            campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',
-            submission_id: `SUB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            email: email,                                                    // B
+            customer_id: customerId || '',                                   // C
+            firstname: firstname || '',                                      // D
+            lastname: lastname || '',                                        // E
+            specialties: Array.isArray(specialties) ? specialties.join(', ') : specialties,  // F
+            specialty_count: Array.isArray(specialties) ? specialties.length : 0,           // G
+            campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',            // H
+            order_id: orderId,                                               // I
+            submission_id: `SUB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`  // J
         };
 
-        // ✅ Send to Google Sheets with increased timeout and retry
         if (!GOOGLE_SHEETS_WEBHOOK) {
-            console.log('⚠️ Google Sheets Webhook not configured');
             return {
                 statusCode: 500,
                 headers,
@@ -74,10 +68,10 @@ exports.handler = async (event, context) => {
             };
         }
 
-        console.log('Sending to Google Sheets...');
-        console.log('Google Sheets URL:', GOOGLE_SHEETS_WEBHOOK);
+        console.log('Sending to Google Sheets:', GOOGLE_SHEETS_WEBHOOK);
+        console.log('Data:', sheetData);
 
-        // ✅ Retry logic with increased timeout
+        // Send with retry
         let lastError;
         const maxRetries = 2;
         
@@ -87,17 +81,13 @@ exports.handler = async (event, context) => {
                 
                 const response = await axios.post(GOOGLE_SHEETS_WEBHOOK, sheetData, {
                     headers: { 'Content-Type': 'application/json' },
-                    timeout: 30000, // ✅ Increased to 30 seconds
+                    timeout: 30000,
                     validateStatus: (status) => status < 500
                 });
 
-                console.log('✅ Google Sheets response:', response.status);
-                console.log('Response data:', response.data);
+                console.log('✅ Response:', response.status, response.data);
 
-                // Check if submission was successful
                 if (response.data && response.data.success) {
-                    console.log('✅ Submission successful!');
-                    
                     return {
                         statusCode: 200,
                         headers,
@@ -109,8 +99,6 @@ exports.handler = async (event, context) => {
                         })
                     };
                 } else if (response.data && response.data.duplicate) {
-                    // Handle duplicate
-                    console.log('⚠️ Duplicate submission detected');
                     return {
                         statusCode: 409,
                         headers,
@@ -121,43 +109,38 @@ exports.handler = async (event, context) => {
                         })
                     };
                 } else {
-                    throw new Error(response.data?.error || 'Google Sheets returned unsuccessful response');
+                    throw new Error(response.data?.error || 'Unsuccessful response');
                 }
 
             } catch (error) {
                 lastError = error;
                 console.log(`Attempt ${attempt} failed:`, error.message);
                 
-                // If timeout and not last attempt, retry
                 if (error.code === 'ECONNABORTED' && attempt < maxRetries) {
                     console.log('Timeout - retrying...');
-                    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                     continue;
                 }
                 
-                // If it's the last attempt, throw
                 if (attempt === maxRetries) {
                     throw error;
                 }
             }
         }
 
-        // If we get here, all retries failed
         throw lastError;
 
     } catch (error) {
-        console.error('=== FUNCTION ERROR ===');
+        console.error('=== ERROR ===');
         console.error('Error:', error.message);
-        console.error('Stack:', error.stack);
         
-        // Handle specific errors
         if (error.code === 'ECONNABORTED') {
             return {
                 statusCode: 504,
                 headers,
                 body: JSON.stringify({
                     success: false,
-                    error: 'Request to Google Sheets timed out. Your submission may have been recorded. Please check your order status before trying again.',
+                    error: 'Request timed out. Check your submission before retrying.',
                     timeout: true
                 })
             };
