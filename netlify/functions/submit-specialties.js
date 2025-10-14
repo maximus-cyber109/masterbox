@@ -44,34 +44,56 @@ exports.handler = async (event, context) => {
 
         console.log('Submission:', { email, orderId, specialties });
 
-        // ✅ CORRECT FIELD NAMES matching Google Script expectations
-        const sheetData = {
-            email: email,                                                    // B
-            customer_id: customerId || '',                                   // C
-            firstname: firstname || '',                                      // D
-            lastname: lastname || '',                                        // E
-            specialties: Array.isArray(specialties) ? specialties.join(', ') : specialties,  // F
-            specialty_count: Array.isArray(specialties) ? specialties.length : 0,           // G
-            campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',            // H
-            order_id: orderId,                                               // I
-            submission_id: `SUB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`  // J
-        };
+        // ✅ STEP 1: CHECK IF ORDER ALREADY CLAIMED
+        if (GOOGLE_SHEETS_WEBHOOK) {
+            try {
+                console.log('🔍 Checking for duplicate order:', orderId);
+                const checkUrl = `${GOOGLE_SHEETS_WEBHOOK}?action=checkOrder&orderId=${encodeURIComponent(orderId)}`;
+                
+                const checkResponse = await axios.get(checkUrl, {
+                    timeout: 10000,
+                    validateStatus: (status) => status < 500
+                });
 
-        if (!GOOGLE_SHEETS_WEBHOOK) {
-            return {
-                statusCode: 500,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Google Sheets webhook not configured'
-                })
-            };
+                console.log('Check response:', checkResponse.data);
+
+                if (checkResponse.data && checkResponse.data.exists) {
+                    console.log('❌ Order already claimed!');
+                    return {
+                        statusCode: 409,
+                        headers,
+                        body: JSON.stringify({
+                            success: false,
+                            error: 'This order has already claimed a MasterBox',
+                            duplicate: true,
+                            orderId: orderId
+                        })
+                    };
+                }
+
+                console.log('✅ Order is eligible - proceeding with submission');
+
+            } catch (checkError) {
+                console.error('⚠️ Duplicate check failed:', checkError.message);
+                // Continue anyway - Google Script will catch it
+            }
         }
 
-        console.log('Sending to Google Sheets:', GOOGLE_SHEETS_WEBHOOK);
-        console.log('Data:', sheetData);
+        // ✅ STEP 2: SUBMIT TO GOOGLE SHEETS
+        const sheetData = {
+            email: email,
+            customer_id: customerId || '',
+            firstname: firstname || '',
+            lastname: lastname || '',
+            specialties: Array.isArray(specialties) ? specialties.join(', ') : specialties,
+            specialty_count: Array.isArray(specialties) ? specialties.length : 0,
+            campaign: testMode ? 'TEST_PB_DAYS_OCT_2025' : 'PB_DAYS_OCT_2025',
+            order_id: orderId,
+            submission_id: `SUB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        };
 
-        // Send with retry
+        console.log('Sending to Google Sheets:', GOOGLE_SHEETS_WEBHOOK);
+
         let lastError;
         const maxRetries = 2;
         
@@ -99,6 +121,7 @@ exports.handler = async (event, context) => {
                         })
                     };
                 } else if (response.data && response.data.duplicate) {
+                    // Google Script caught duplicate
                     return {
                         statusCode: 409,
                         headers,
