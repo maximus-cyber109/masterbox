@@ -1,9 +1,19 @@
-// Auto-detect environment based on referer
+// Enhanced environment detection - checks both referer and origin
 function getEnvironmentConfig(event) {
     const referer = event.headers.referer || event.headers.Referer || '';
+    const origin = event.headers.origin || '';
+    const host = event.headers.host || '';
     
-    // Check if request is coming from UAT
-    const isUAT = referer.includes('uat.pinkblue.in');
+    // Check all possible headers for UAT
+    const isUAT = referer.includes('uat.pinkblue.in') || 
+                  origin.includes('uat.pinkblue.in') ||
+                  host.includes('uat');
+    
+    console.log('🔍 Request Headers:');
+    console.log('  Referer:', referer);
+    console.log('  Origin:', origin);
+    console.log('  Host:', host);
+    console.log('  Detected Environment:', isUAT ? 'UAT' : 'PRODUCTION');
     
     return {
         baseUrl: isUAT ? process.env.MAGENTO_UAT_BASE_URL : process.env.MAGENTO_BASE_URL,
@@ -143,13 +153,16 @@ exports.handler = async (event, context) => {
 
         // ✅ Real Magento API call
         if (!config.apiToken || !config.baseUrl) {
-            console.error('Missing Magento configuration for environment:', config.environment);
+            console.error('❌ Missing Magento configuration for environment:', config.environment);
+            console.error('Base URL:', config.baseUrl);
+            console.error('API Token exists:', !!config.apiToken);
             return {
                 statusCode: 500,
                 headers,
                 body: JSON.stringify({
                     success: false,
-                    error: 'Server configuration error'
+                    error: 'Server configuration error',
+                    environment: config.environment
                 })
             };
         }
@@ -195,7 +208,8 @@ exports.handler = async (event, context) => {
                     success: false,
                     error: response.status === 404 ?
                         'No customer found with this email address' :
-                        `Magento API error: ${response.status}`
+                        `Magento API error: ${response.status}`,
+                    environment: config.environment
                 })
             };
         }
@@ -205,7 +219,7 @@ exports.handler = async (event, context) => {
 
         if (orderData.items && orderData.items.length > 0) {
             const recentOrder = orderData.items[0];
-            console.log('Latest order:', {
+            console.log('✅ Latest order:', {
                 increment_id: recentOrder.increment_id,
                 grand_total: recentOrder.grand_total,
                 status: recentOrder.status
@@ -235,13 +249,14 @@ exports.handler = async (event, context) => {
                 })
             };
         } else {
-            console.log('No orders found for email:', normalizedEmail);
+            console.log('❌ No orders found for email:', normalizedEmail);
             return {
                 statusCode: 404,
                 headers,
                 body: JSON.stringify({
                     success: false,
-                    error: 'No recent orders found for this email address'
+                    error: 'No recent orders found for this email address',
+                    environment: config.environment
                 })
             };
         }
