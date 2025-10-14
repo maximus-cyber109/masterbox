@@ -13,7 +13,7 @@ exports.handler = async (event, context) => {
         return { statusCode: 200, headers, body: '' };
     }
 
-    console.log('=== CHECK SUBMISSION (Google Sheet) ===');
+    console.log('=== CHECK SUBMISSION ===');
     
     try {
         const { orderId, orderIncrementId } = JSON.parse(event.body || '{}');
@@ -30,35 +30,33 @@ exports.handler = async (event, context) => {
         }
 
         const searchOrderId = orderIncrementId || orderId;
-        console.log('Checking if this order has been claimed:', searchOrderId);
+        
+        // ✅ Normalize: remove leading zeros
+        const normalizedOrderId = searchOrderId.toString().replace(/^0+/, '') || '0';
+        
+        console.log('Checking:', searchOrderId, '(normalized:', normalizedOrderId + ')');
 
         if (!GOOGLE_SHEETS_WEBHOOK) {
-            console.log('⚠️ Google Sheets Webhook not configured - skipping duplicate check');
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
                     success: true,
-                    hasSubmitted: false,
-                    message: 'Duplicate check skipped - not configured'
+                    hasSubmitted: false
                 })
             };
         }
 
-        // ✅ Check Google Sheet for this specific order ID
         try {
-            const checkUrl = `${GOOGLE_SHEETS_WEBHOOK}?action=checkOrder&orderId=${encodeURIComponent(searchOrderId)}`;
-            console.log('Checking Google Sheet:', checkUrl);
-
+            const checkUrl = `${GOOGLE_SHEETS_WEBHOOK}?action=checkOrder&orderId=${encodeURIComponent(normalizedOrderId)}`;
+            
             const response = await axios.get(checkUrl, {
                 timeout: 10000,
                 validateStatus: (status) => status < 500
             });
 
-            console.log('Google Sheet response:', response.data);
-
             if (response.data && response.data.exists) {
-                console.log('❌ This order has already been claimed');
+                console.log('❌ Already claimed');
                 return {
                     statusCode: 200,
                     headers,
@@ -73,44 +71,37 @@ exports.handler = async (event, context) => {
                     })
                 };
             } else {
-                console.log('✅ This order has NOT been claimed yet');
+                console.log('✅ Eligible');
                 return {
                     statusCode: 200,
                     headers,
                     body: JSON.stringify({
                         success: true,
-                        hasSubmitted: false,
-                        message: 'This order is eligible for MasterBox claim'
+                        hasSubmitted: false
                     })
                 };
             }
 
-        } catch (sheetError) {
-            console.error('Google Sheet check failed:', sheetError.message);
-            // If check fails, allow submission (don't block user)
+        } catch (error) {
+            console.error('Check failed:', error.message);
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
                     success: true,
-                    hasSubmitted: false,
-                    message: 'Could not verify - allowing submission'
+                    hasSubmitted: false
                 })
             };
         }
 
     } catch (error) {
-        console.error('=== CHECK SUBMISSION ERROR ===');
         console.error('Error:', error.message);
-        
-        // On error, allow submission
         return {
             statusCode: 200,
             headers,
             body: JSON.stringify({
                 success: true,
-                hasSubmitted: false,
-                message: 'Error checking submission - allowing'
+                hasSubmitted: false
             })
         };
     }
