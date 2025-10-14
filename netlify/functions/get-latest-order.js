@@ -1,29 +1,11 @@
-// Enhanced environment detection - checks both referer and origin
-function getEnvironmentConfig(event) {
-    const referer = event.headers.referer || event.headers.Referer || '';
-    const origin = event.headers.origin || '';
-    const host = event.headers.host || '';
-    
-    // Check all possible headers for UAT
-    const isUAT = referer.includes('uat.pinkblue.in') || 
-                  origin.includes('uat.pinkblue.in') ||
-                  host.includes('uat');
-    
-    console.log('🔍 Request Headers:');
-    console.log('  Referer:', referer);
-    console.log('  Origin:', origin);
-    console.log('  Host:', host);
-    console.log('  Detected Environment:', isUAT ? 'UAT' : 'PRODUCTION');
-    
-    return {
-        baseUrl: isUAT ? process.env.MAGENTO_UAT_BASE_URL : process.env.MAGENTO_BASE_URL,
-        apiToken: isUAT ? process.env.MAGENTO_UAT_API_TOKEN : process.env.MAGENTO_API_TOKEN,
-        environment: isUAT ? 'UAT' : 'PRODUCTION'
-    };
-}
+// FORCE UAT ONLY FOR TESTING
+const MAGENTO_BASE_URL = process.env.MAGENTO_UAT_BASE_URL || 'https://uat.pinkblue.in/rest/V1';
+const MAGENTO_API_TOKEN = process.env.MAGENTO_UAT_API_TOKEN;
 
 exports.handler = async (event, context) => {
-    console.log('📦 Get Latest Order - Enhanced with UAT/Production auto-detection');
+    console.log('📦 Get Latest Order - UAT TESTING MODE ONLY');
+    console.log('🌍 Environment: UAT (FORCED)');
+    console.log('Magento Base URL:', MAGENTO_BASE_URL);
     
     const headers = {
         'Access-Control-Allow-Origin': '*',
@@ -61,10 +43,6 @@ exports.handler = async (event, context) => {
         }
 
         const normalizedEmail = email.toLowerCase().trim();
-        
-        // Get environment configuration
-        const config = getEnvironmentConfig(event);
-        console.log(`🌍 Environment: ${config.environment}`);
         console.log('Searching for customer email:', normalizedEmail);
 
         // ✅ Test Override - Force Fetch Mode
@@ -109,72 +87,27 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // ✅ Special Test Overrides
-        if (normalizedEmail.includes('test_override_maaz') || normalizedEmail.includes('test_override_valli')) {
-            console.log('✅ Admin override detected');
-            const cleanEmail = normalizedEmail.replace(/[_-]?test_override_(maaz|valli)/g, '@gmail.com');
-            
-            const mockData = {
-                entity_id: '789123',
-                increment_id: 'ADMIN_' + Date.now(),
-                grand_total: '15000.00',
-                status: 'complete',
-                created_at: new Date().toISOString(),
-                customer_email: cleanEmail,
-                customer_firstname: 'Admin',
-                customer_lastname: 'User',
-                order_currency_code: 'INR'
-            };
-
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({
-                    success: true,
-                    environment: 'TEST',
-                    customer: {
-                        id: mockData.entity_id,
-                        email: cleanEmail,
-                        firstname: mockData.customer_firstname,
-                        lastname: mockData.customer_lastname
-                    },
-                    order: {
-                        id: mockData.entity_id,
-                        increment_id: mockData.increment_id,
-                        status: mockData.status,
-                        created_at: mockData.created_at,
-                        grand_total: mockData.grand_total,
-                        currency_code: mockData.order_currency_code
-                    },
-                    testMode: true
-                })
-            };
-        }
-
-        // ✅ Real Magento API call
-        if (!config.apiToken || !config.baseUrl) {
-            console.error('❌ Missing Magento configuration for environment:', config.environment);
-            console.error('Base URL:', config.baseUrl);
-            console.error('API Token exists:', !!config.apiToken);
+        // ✅ Check configuration
+        if (!MAGENTO_API_TOKEN || !MAGENTO_BASE_URL) {
+            console.error('❌ Missing UAT Magento configuration');
+            console.error('Base URL:', MAGENTO_BASE_URL);
+            console.error('API Token exists:', !!MAGENTO_API_TOKEN);
             return {
                 statusCode: 500,
                 headers,
                 body: JSON.stringify({
                     success: false,
-                    error: 'Server configuration error',
-                    environment: config.environment
+                    error: 'UAT server configuration error - missing credentials'
                 })
             };
         }
 
-        console.log('Magento Base URL:', config.baseUrl);
-
-        // ✅ Look for recent orders (last 30 days to be safe)
+        // ✅ Look for recent orders (last 30 days)
         const maxDaysAgo = new Date();
         maxDaysAgo.setDate(maxDaysAgo.getDate() - 30);
         maxDaysAgo.setHours(0, 0, 0, 0);
 
-        const searchUrl = `${config.baseUrl}/orders?` +
+        const searchUrl = `${MAGENTO_BASE_URL}/orders?` +
             `searchCriteria[filterGroups][0][filters][0][field]=customer_email&` +
             `searchCriteria[filterGroups][0][filters][0][value]=${encodeURIComponent(normalizedEmail)}&` +
             `searchCriteria[filterGroups][0][filters][0][conditionType]=eq&` +
@@ -185,21 +118,21 @@ exports.handler = async (event, context) => {
             `searchCriteria[sortOrders][0][direction]=DESC&` +
             `searchCriteria[pageSize]=1`;
 
-        console.log('Making request to:', searchUrl);
+        console.log('Making UAT request to:', searchUrl);
 
         const response = await fetch(searchUrl, {
             headers: {
-                'Authorization': `Bearer ${config.apiToken}`,
+                'Authorization': `Bearer ${MAGENTO_API_TOKEN}`,
                 'Content-Type': 'application/json'
             },
             timeout: 15000
         });
 
-        console.log('Magento API response status:', response.status);
+        console.log('UAT Magento API response status:', response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Magento API error:', response.status, errorText);
+            console.error('UAT Magento API error:', response.status, errorText);
             
             return {
                 statusCode: 404,
@@ -207,31 +140,30 @@ exports.handler = async (event, context) => {
                 body: JSON.stringify({
                     success: false,
                     error: response.status === 404 ?
-                        'No customer found with this email address' :
-                        `Magento API error: ${response.status}`,
-                    environment: config.environment
+                        'No customer found with this email address on UAT' :
+                        `UAT Magento API error: ${response.status}`,
+                    environment: 'UAT'
                 })
             };
         }
 
         const orderData = await response.json();
-        console.log('Orders found:', orderData.total_count || 0);
+        console.log('UAT Orders found:', orderData.total_count || 0);
 
         if (orderData.items && orderData.items.length > 0) {
             const recentOrder = orderData.items[0];
-            console.log('✅ Latest order:', {
+            console.log('✅ Latest UAT order:', {
                 increment_id: recentOrder.increment_id,
                 grand_total: recentOrder.grand_total,
                 status: recentOrder.status
             });
 
-            // ✅ Return in the format expected by the frontend
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
                     success: true,
-                    environment: config.environment,
+                    environment: 'UAT',
                     customer: {
                         id: recentOrder.customer_id || Date.now(),
                         email: recentOrder.customer_email || normalizedEmail,
@@ -249,14 +181,14 @@ exports.handler = async (event, context) => {
                 })
             };
         } else {
-            console.log('❌ No orders found for email:', normalizedEmail);
+            console.log('❌ No orders found on UAT for email:', normalizedEmail);
             return {
                 statusCode: 404,
                 headers,
                 body: JSON.stringify({
                     success: false,
-                    error: 'No recent orders found for this email address',
-                    environment: config.environment
+                    error: 'No recent orders found for this email address on UAT',
+                    environment: 'UAT'
                 })
             };
         }
