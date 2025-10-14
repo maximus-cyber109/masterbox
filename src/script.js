@@ -13,296 +13,631 @@ class PBDaysApp {
         
         this.initialize();
     }
-
-    async initialize() {
+    
+    initialize() {
         this.setupEventListeners();
-        
-        // Show loading for 2.5 seconds
-        await this.sleep(2500);
-        
-        // Get email from URL or prompt
-        const urlEmail = this.getEmailFromURL();
-        
-        if (urlEmail) {
-            await this.fetchLatestOrder(urlEmail);
-        } else {
-            this.hideLoading();
-            this.showEmailModal();
-        }
+        this.startWaveAnimation();
     }
-
+    
     setupEventListeners() {
-        // Card selection
-        const cards = document.querySelectorAll('.card');
-        cards.forEach(card => {
-            card.addEventListener('click', () => this.toggleCard(card));
-        });
-
-        // Submit button
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn) {
-            submitBtn.addEventListener('click', () => this.handleFinalSubmission());
-        }
-
-        // Email modal
-        const emailSubmit = document.getElementById('emailSubmit');
-        const emailInput = document.getElementById('emailInput');
-        
-        if (emailSubmit) {
-            emailSubmit.addEventListener('click', () => this.handleEmailSubmit());
-        }
-        
-        if (emailInput) {
-            emailInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.handleEmailSubmit();
+        const emailForm = document.getElementById('emailForm');
+        if (emailForm) {
+            emailForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleEmailSubmission();
             });
         }
-
-        // Error modal close
-        const errorClose = document.getElementById('errorClose');
-        if (errorClose) {
-            errorClose.addEventListener('click', () => this.hideModal('errorModal'));
+        
+        const specialtyCards = document.querySelectorAll('.card');
+        specialtyCards.forEach(card => {
+            card.addEventListener('click', () => {
+                this.toggleCard(card);
+            });
+        });
+        
+        const submitButton = document.getElementById('submitBtn');
+        if (submitButton) {
+            submitButton.addEventListener('click', () => {
+                this.handleFinalSubmission();
+            });
         }
+        
+        this.loadSavedSelections();
     }
-
+    
     startWaveAnimation() {
-        const cards = document.querySelectorAll('.card');
-        cards.forEach((card, index) => {
-            setTimeout(() => {
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, index * 50);
-        });
-    }
-
-    toggleCard(card) {
-        const specialty = card.dataset.specialty;
-        
-        if (this.selectedSpecialties.has(specialty)) {
-            this.selectedSpecialties.delete(specialty);
-            card.classList.remove('selected');
-        } else {
-            if (this.selectedSpecialties.size >= 3) {
-                this.showError('Maximum Selection', 'You can select up to 3 specialties');
-                return;
-            }
-            this.selectedSpecialties.add(specialty);
-            card.classList.add('selected');
-        }
-        
-        this.updateSelectionStatus();
-        this.updateSubmitButton();
-    }
-
-    updateSelectionStatus() {
-        const status = document.getElementById('selectionStatus');
-        const count = this.selectedSpecialties.size;
-        
-        if (count === 0) {
-            status.innerHTML = '<span>No specialties selected</span>';
-        } else {
-            const list = Array.from(this.selectedSpecialties).join(', ');
-            status.innerHTML = `<span>${count} selected: ${list}</span>`;
-        }
-    }
-
-    updateSubmitButton() {
-        const btn = document.getElementById('submitBtn');
-        const count = this.selectedSpecialties.size;
-        
-        btn.disabled = count === 0;
-        
-        if (count > 0) {
-            btn.querySelector('.btn-text').textContent = `Confirm ${count} ${count === 1 ? 'Specialty' : 'Specialties'}`;
-        } else {
-            btn.querySelector('.btn-text').textContent = 'Confirm Selection';
-        }
-    }
-
-    async fetchLatestOrder(email) {
-        try {
-            console.log('📦 Fetching order for:', email);
+        setTimeout(() => {
+            const waveContainer = document.getElementById('loadingScreen');
+            const mainApp = document.getElementById('app');
             
-            const response = await fetch('/.netlify/functions/get-latest-order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                throw new Error(data.error || 'Unable to fetch order. Please contact support@pinkblue.in');
+            if (waveContainer && mainApp) {
+                waveContainer.classList.add('fade-out');
+                
+                setTimeout(() => {
+                    waveContainer.style.display = 'none';
+                    mainApp.classList.add('show');
+                    this.initializeApplication();
+                }, 1500);
             }
-
-            this.customerData = data.customer;
-            this.orderData = data.order;
-
-            await this.checkPreviousSubmission();
-
+        }, 2000); // 2 seconds loading time
+    }
+    
+    async initializeApplication() {
+        console.log('⚙️ Initializing application...');
+        this.showAppLoading();
+        
+        try {
+            // FIRST: Check for email in URL parameter (from Magento)
+            const urlParams = new URLSearchParams(window.location.search);
+            const emailParam = urlParams.get('email');
+            
+            if (emailParam) {
+                // Email passed via query parameter from Magento
+                console.log('📧 Email found in URL parameter:', emailParam);
+                
+                // Check for test mode
+                if (emailParam.includes('-forcefetch')) {
+                    this.activateTestMode();
+                    this.customerData = {
+                        id: `TEST_${Date.now()}`,
+                        email: emailParam.replace('-forcefetch', ''),
+                        firstname: 'Test',
+                        lastname: 'User'
+                    };
+                    this.generateMockOrder();
+                    this.displayOrderInfo();
+                } else {
+                    // Fetch real order using email
+                    await this.fetchCustomerOrder(emailParam);
+                    
+                    if (this.customerData && this.orderData) {
+                        this.displayOrderInfo();
+                        
+                        const alreadySubmitted = await this.checkExistingSubmission();
+                        if (alreadySubmitted) {
+                            this.showAlreadySubmittedState();
+                            return;
+                        }
+                    } else {
+                        throw new Error('No orders found for this email');
+                    }
+                }
+            } else {
+                // FALLBACK: Try existing bearer token method
+                await this.getCustomerInformation();
+                
+                if (this.customerData) {
+                    console.log('✅ Customer found:', this.customerData.email);
+                    
+                    if (this.customerData.email.includes('-forcefetch')) {
+                        this.activateTestMode();
+                        this.generateMockOrder();
+                        this.displayOrderInfo();
+                    } else {
+                        await this.fetchCustomerOrder(this.customerData.email);
+                        if (this.orderData) {
+                            this.displayOrderInfo();
+                            
+                            const alreadySubmitted = await this.checkExistingSubmission();
+                            if (alreadySubmitted) {
+                                this.showAlreadySubmittedState();
+                                return;
+                            }
+                        }
+                    }
+                } else {
+                    throw new Error('No customer data available');
+                }
+            }
         } catch (error) {
-            console.error('❌ Fetch error:', error);
-            this.hideLoading();
-            this.showError('Unable to Fetch Order', error.message);
+            console.log('ℹ️ No customer session, showing email modal');
+            this.showEmailInputModal();
+            return;
+        }
+        
+        this.hideAppLoading();
+        this.updateUserInterface();
+    }
+    
+    activateTestMode() {
+        console.log('🧪 TEST MODE ACTIVATED');
+        this.isTestMode = true;
+        
+        const testBadge = document.createElement('div');
+        testBadge.className = 'test-badge';
+        testBadge.textContent = 'TEST MODE';
+        document.body.appendChild(testBadge);
+    }
+    
+    generateMockOrder() {
+        const cleanEmail = this.customerData.email.replace('-forcefetch', '');
+        this.customerData.email = cleanEmail;
+        
+        this.orderData = {
+            id: `TEST_${Date.now()}`,
+            increment_id: `TEST-${Math.floor(Math.random() * 10000)}`,
+            grand_total: '0.00',
+            status: 'test'
+        };
+    }
+    
+    showAppLoading() {
+        const loadingElement = document.getElementById('appLoading');
+        if (loadingElement) {
+            loadingElement.style.display = 'flex';
         }
     }
-
-    async checkPreviousSubmission() {
+    
+    hideAppLoading() {
+        const loadingElement = document.getElementById('appLoading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+    }
+    
+    showEmailInputModal() {
+        this.hideAppLoading();
+        const modal = document.getElementById('emailModal');
+        if (modal) {
+            modal.classList.add('show');
+        }
+    }
+    
+    async handleEmailSubmission() {
+        const emailInput = document.getElementById('emailInput');
+        const fetchLoader = document.getElementById('emailLoading');
+        const fetchLabel = document.getElementById('emailText');
+        
+        if (!emailInput) return;
+        
+        const email = emailInput.value.trim();
+        
+        if (!email) {
+            this.showUserMessage('Please enter your email address');
+            return;
+        }
+        
+        if (!this.isValidEmailFormat(email.replace('-forcefetch', ''))) {
+            this.showUserMessage('Please enter a valid email address');
+            return;
+        }
+        
+        if (fetchLoader) fetchLoader.style.display = 'inline-block';
+        if (fetchLabel) fetchLabel.textContent = 'Processing...';
+        
+        try {
+            if (email.includes('-forcefetch')) {
+                console.log('🧪 Test mode detected from email');
+                this.activateTestMode();
+                
+                this.customerData = {
+                    id: `TEST_${Date.now()}`,
+                    email: email.replace('-forcefetch', ''),
+                    firstname: 'Test',
+                    lastname: 'User'
+                };
+                
+                this.generateMockOrder();
+                this.hideEmailModal();
+                this.displayOrderInfo();
+                this.updateUserInterface();
+                
+            } else {
+                await this.fetchCustomerOrder(email);
+                
+                if (this.customerData && this.orderData) {
+                    this.hideEmailModal();
+                    this.displayOrderInfo();
+                    
+                    const alreadySubmitted = await this.checkExistingSubmission();
+                    if (alreadySubmitted) {
+                        this.showAlreadySubmittedState();
+                    } else {
+                        this.updateUserInterface();
+                    }
+                } else {
+                    throw new Error('No recent orders found for this email');
+                }
+            }
+        } catch (error) {
+            console.error('❌ Email processing failed:', error);
+            this.showUserMessage('Could not find recent orders. Add "-forcefetch" to your email for testing mode.');
+        } finally {
+            if (fetchLoader) fetchLoader.style.display = 'none';
+            if (fetchLabel) fetchLabel.textContent = 'Continue';
+        }
+    }
+    
+    hideEmailModal() {
+        const modal = document.getElementById('emailModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    }
+    
+    displayOrderInfo() {
+        if (!this.customerData || !this.orderData) return;
+        
+        const welcomeElement = document.getElementById('customerName');
+        const orderCard = document.getElementById('orderCard');
+        
+        if (welcomeElement) {
+            welcomeElement.textContent = `Welcome, ${this.customerData.firstname}!`;
+        }
+        
+        if (orderCard) {
+            orderCard.classList.add('show');
+        }
+    }
+    
+    async getCustomerInformation() {
+        const bearerToken = this.findBearerToken();
+        
+        if (!bearerToken) {
+            throw new Error('No authentication token available');
+        }
+        
+        console.log('🔑 Attempting customer authentication...');
+        
+        const response = await fetch('/.netlify/functions/get-customer-info', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${bearerToken}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.fallback || !data.success) {
+            throw new Error('Customer API unavailable');
+        }
+        
+        this.customerData = data.customer;
+    }
+    
+    findBearerToken() {
+        try {
+            if (window.parent !== window) {
+                const token = window.parent.customerToken || 
+                             window.parent.localStorage?.getItem('customerToken');
+                if (token) return token;
+            }
+        } catch (error) {
+            // CORS error expected
+        }
+        
+        const localToken = localStorage.getItem('customerToken') || 
+                          sessionStorage.getItem('customerToken');
+        if (localToken) return localToken;
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('token');
+    }
+    
+    async fetchCustomerOrder(email) {
+        console.log('📦 Fetching latest order for:', email);
+        
+        const response = await fetch('/.netlify/functions/get-latest-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Order fetch failed');
+        }
+        
+        this.customerData = data.customer;
+        this.orderData = data.order;
+        
+        console.log('📦 Order retrieved:', this.orderData.increment_id);
+    }
+    
+    async checkExistingSubmission() {
+        if (this.isTestMode) {
+            console.log('🧪 Test mode - skipping duplicate check');
+            return false;
+        }
+        
+        if (!this.orderData) return false;
+        
         try {
             const response = await fetch('/.netlify/functions/check-submission', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId: this.orderData.increment_id })
+                body: JSON.stringify({
+                    orderId: this.orderData.id,
+                    orderIncrementId: this.orderData.increment_id
+                })
             });
-
+            
             const data = await response.json();
-
+            
             if (data.hasSubmitted) {
-                this.showAlreadyClaimed(data.submissionData);
-            } else {
-                this.showMainScreen();
+                const submissionInfoElement = document.getElementById('submissionInfo');
+                if (submissionInfoElement) {
+                    submissionInfoElement.innerHTML = `
+                        <p><strong>Order:</strong> #${this.orderData.increment_id}</p>
+                        <p><strong>Submitted:</strong> ${new Date(data.submissionData.timestamp).toLocaleDateString()}</p>
+                        <p><strong>Specialties:</strong> ${data.submissionData.specialties}</p>
+                    `;
+                }
+                return true;
             }
-
+            
+            return false;
         } catch (error) {
-            console.error('⚠️ Check error:', error);
-            this.showMainScreen();
+            console.log('⚠️ Could not verify previous submission');
+            return false;
         }
     }
-
-    showMainScreen() {
-        const nameEl = document.getElementById('customerName');
-        if (nameEl && this.customerData) {
-            nameEl.textContent = this.customerData.firstname || 'Valued Customer';
+    
+    toggleCard(card) {
+        if (this.isSubmitting) return;
+        
+        const specialtyValue = card.dataset.specialty;
+        
+        if (card.classList.contains('selected')) {
+            card.classList.remove('selected');
+            this.selectedSpecialties.delete(specialtyValue);
+        } else {
+            card.classList.add('selected');
+            this.selectedSpecialties.add(specialtyValue);
         }
-
-        this.hideLoading();
-        this.showScreen('mainScreen');
         
-        // Start wave animation after screen is visible
-        setTimeout(() => this.startWaveAnimation(), 100);
-    }
-
-    showAlreadyClaimed(data) {
-        document.getElementById('claimedOrderId').textContent = `#${data.orderId || 'N/A'}`;
-        document.getElementById('claimedSpecialties').textContent = data.specialties || 'N/A';
+        this.updateProgressIndicator();
+        this.updateSubmitButtonState();
+        this.saveCurrentSelections();
         
-        this.hideLoading();
-        this.showScreen('alreadyClaimedScreen');
+        if (navigator.vibrate) {
+            navigator.vibrate(10);
+        }
     }
-
+    
+    updateProgressIndicator() {
+        const count = this.selectedSpecialties.size;
+        const progressText = document.getElementById('counter');
+        
+        if (progressText) {
+            if (count === 0) {
+                progressText.textContent = 'No specialties selected';
+                progressText.classList.remove('active');
+            } else if (count === 1) {
+                progressText.textContent = '1 specialty selected';
+                progressText.classList.add('active');
+            } else {
+                progressText.textContent = `${count} specialties selected`;
+                progressText.classList.add('active');
+            }
+        }
+    }
+    
+    updateSubmitButtonState() {
+        const submitButton = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        
+        if (!submitButton || !submitText) return;
+        
+        if (this.selectedSpecialties.size === 0) {
+            submitButton.disabled = true;
+            submitText.textContent = 'Select Specialties';
+        } else {
+            submitButton.disabled = false;
+            submitText.textContent = this.isTestMode ? 'Test Claim' : 'Claim My MasterBox';
+        }
+    }
+    
     async handleFinalSubmission() {
         if (this.isSubmitting || this.selectedSpecialties.size === 0) return;
-
+        
+        if (!this.customerData || !this.orderData) {
+            this.showUserMessage('Order information not available');
+            return;
+        }
+        
         this.isSubmitting = true;
-        const btn = document.getElementById('submitBtn');
-        btn.disabled = true;
-        btn.querySelector('.btn-text').textContent = 'Submitting...';
-
+        this.showSubmissionLoading();
+        
         try {
-            const selectedArray = Array.from(this.selectedSpecialties);
-
-            const submissionData = {
+            const specialtiesArray = Array.from(this.selectedSpecialties);
+            
+            const submissionPayload = {
                 email: this.customerData.email,
                 firstname: this.customerData.firstname,
                 lastname: this.customerData.lastname,
                 customerId: this.customerData.id,
-                specialties: selectedArray,
+                specialties: specialtiesArray,
                 orderId: this.orderData.increment_id,
                 orderEntityId: this.orderData.id,
                 orderAmount: this.orderData.grand_total,
                 testMode: this.isTestMode
             };
-
-            console.log('📤 Submitting:', submissionData);
-
+            
+            console.log('📤 Submitting MasterBox claim...');
+            
             const response = await fetch('/.netlify/functions/submit-specialties', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(submissionData)
+                body: JSON.stringify(submissionPayload)
             });
-
+            
             const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Submission failed. Please contact support@pinkblue.in');
+            
+            if (response.status === 409) {
+                this.showUserMessage('This order has already claimed its MasterBox');
+                this.showAlreadySubmittedState();
+                return;
             }
-
-            console.log('✅ Success!');
-            this.showSuccessScreen(selectedArray);
-
+            
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || `Server error: ${response.status}`);
+            }
+            
+            console.log('✅ MasterBox claimed successfully!');
+            this.clearStoredSelections();
+            this.showSuccessState();
+            
         } catch (error) {
-            console.error('❌ Submission error:', error);
-            this.showError('Submission Failed', error.message);
-            btn.disabled = false;
-            btn.querySelector('.btn-text').textContent = 'Confirm Selection';
+            console.error('❌ Submission failed:', error);
+            this.showUserMessage('Failed to claim MasterBox. Please try again.');
         } finally {
             this.isSubmitting = false;
+            this.hideSubmissionLoading();
         }
     }
-
-    showSuccessScreen(specialties) {
-        document.getElementById('successOrderId').textContent = `#${this.orderData.increment_id}`;
-        document.getElementById('successSpecialties').textContent = specialties.join(', ');
-        document.getElementById('successEmail').textContent = this.customerData.email;
+    
+    showSubmissionLoading() {
+        const submitButton = document.getElementById('submitBtn');
+        const submitLoader = document.getElementById('submitLoading');
+        const submitText = document.getElementById('submitText');
         
-        this.showScreen('successScreen');
+        if (submitButton) submitButton.disabled = true;
+        if (submitLoader) submitLoader.style.display = 'inline-block';
+        if (submitText) submitText.textContent = 'Processing...';
     }
-
-    async handleEmailSubmit() {
-        const input = document.getElementById('emailInput');
-        const email = input.value.trim();
-
-        if (!email || !this.validateEmail(email)) {
-            this.showError('Invalid Email', 'Please enter a valid email address');
-            return;
+    
+    hideSubmissionLoading() {
+        const submitLoader = document.getElementById('submitLoading');
+        if (submitLoader) submitLoader.style.display = 'none';
+        this.updateSubmitButtonState();
+    }
+    
+    showAlreadySubmittedState() {
+        const specialtySection = document.getElementById('formSection');
+        const submitArea = document.getElementById('submitArea');
+        const alreadySubmittedState = document.getElementById('alreadySubmitted');
+        
+        if (specialtySection) specialtySection.style.display = 'none';
+        if (submitArea) submitArea.style.display = 'none';
+        if (alreadySubmittedState) alreadySubmittedState.classList.add('show');
+    }
+    
+    showSuccessState() {
+        const specialtySection = document.getElementById('formSection');
+        const submitArea = document.getElementById('submitArea');
+        const successModal = document.getElementById('successModal');
+        
+        if (specialtySection) specialtySection.style.display = 'none';
+        if (submitArea) submitArea.style.display = 'none';
+        
+        if (successModal) {
+            successModal.classList.add('show');
+            
+            setTimeout(() => {
+                this.setupShareModalButton();
+                this.setupReturnModalButton();
+            }, 300);
         }
-
-        this.hideModal('emailModal');
+    }
+    
+    setupShareModalButton() {
+        const shareBtn = document.getElementById('shareModalBtn');
+        if (!shareBtn) return;
         
-        // Show loading while fetching
-        document.getElementById('loadingScreen')?.classList.add('active');
-        await this.sleep(2500);
+        shareBtn.addEventListener('click', async () => {
+            const shareText = "🎁 I just claimed my Custom MasterBox from PB DAYS!\n\nGet yours too during October 15-17.\n\nVisit: https://pinkblue.in";
+            
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'PB DAYS MasterBox',
+                        text: shareText
+                    });
+                    console.log('✅ Shared successfully');
+                } catch (error) {
+                    console.log('Share cancelled or failed');
+                    this.fallbackWhatsAppShare(shareText);
+                }
+            } else {
+                this.fallbackWhatsAppShare(shareText);
+            }
+        });
+    }
+    
+    fallbackWhatsAppShare(text) {
+        const message = encodeURIComponent(text);
+        const whatsappUrl = `https://api.whatsapp.com/send?text=${message}`;
         
-        await this.fetchLatestOrder(email);
+        const newWindow = window.open(whatsappUrl, '_blank');
+        
+        if (!newWindow) {
+            this.copyToClipboard(text);
+            alert('Message copied! Open WhatsApp to paste and share.');
+        }
     }
-
-    validateEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    
+    copyToClipboard(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
     }
-
-    getEmailFromURL() {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('email');
+    
+    setupReturnModalButton() {
+        const returnBtn = document.getElementById('returnModalBtn');
+        if (returnBtn) {
+            returnBtn.addEventListener('click', () => {
+                window.location.href = 'https://pinkblue.in';
+            });
+        }
     }
-
-    showScreen(screenId) {
-        document.querySelectorAll('.main-screen, .status-screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(screenId)?.classList.add('active');
+    
+    saveCurrentSelections() {
+        try {
+            const selections = Array.from(this.selectedSpecialties);
+            localStorage.setItem('pb_days_specialty_selections', JSON.stringify(selections));
+        } catch (error) {
+            console.log('⚠️ Could not save selections to storage');
+        }
     }
-
-    hideLoading() {
-        document.getElementById('loadingScreen')?.classList.remove('active');
+    
+    loadSavedSelections() {
+        try {
+            const saved = localStorage.getItem('pb_days_specialty_selections');
+            if (saved) {
+                const selections = JSON.parse(saved);
+                selections.forEach(specialtyValue => {
+                    const cardElement = document.querySelector(`[data-specialty="${specialtyValue}"]`);
+                    if (cardElement) {
+                        this.selectedSpecialties.add(specialtyValue);
+                        cardElement.classList.add('selected');
+                    }
+                });
+                this.updateProgressIndicator();
+                this.updateSubmitButtonState();
+                console.log('📋 Restored previous specialty selections');
+            }
+        } catch (error) {
+            console.log('⚠️ Could not load saved selections');
+        }
     }
-
-    showEmailModal() {
-        document.getElementById('emailModal')?.classList.add('active');
+    
+    clearStoredSelections() {
+        try {
+            localStorage.removeItem('pb_days_specialty_selections');
+        } catch (error) {
+            // Not critical
+        }
     }
-
-    showModal(modalId) {
-        document.getElementById(modalId)?.classList.add('active');
+    
+    updateUserInterface() {
+        this.updateProgressIndicator();
+        this.updateSubmitButtonState();
     }
-
-    hideModal(modalId) {
-        document.getElementById(modalId)?.classList.remove('active');
+    
+    isValidEmailFormat(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
     }
-
-    showError(title, message) {
-        document.getElementById('errorTitle').textContent = title;
-        document.getElementById('errorMessage').textContent = message;
-        this.showModal('errorModal');
-    }
-
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    
+    showUserMessage(message) {
+        alert(message);
     }
 }
