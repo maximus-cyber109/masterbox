@@ -579,7 +579,6 @@ body {
 }
 
 /* Compact Specialty Grid */
-/* Compact Specialty Grid */
 .grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -773,6 +772,78 @@ body {
 }
 
 .info p strong {
+    color: var(--white);
+    font-weight: 700;
+}
+
+/* ✅ ADDED: Already Submitted State Styles */
+.already-submitted {
+    display: none; /* Hidden by default */
+    padding: 2rem 1rem;
+    text-align: center;
+}
+
+.already-submitted.show {
+    display: block;
+    animation: result-appear 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.already-submitted .status-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 1.5rem;
+    animation: result-pop 1s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: var(--shadow-lg);
+}
+
+.already-submitted .status-icon.warning {
+    background: var(--white);
+    color: var(--bg-black);
+}
+
+.already-submitted h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--white);
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+}
+
+.already-submitted p {
+    color: var(--gray-mid);
+    font-size: 0.9375rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.submission-details {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    padding: 1.25rem;
+    border-radius: 14px;
+    color: var(--gray-mid);
+    font-size: 0.875rem;
+    text-align: left;
+    max-width: 340px;
+    margin: 0 auto 1.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.submission-details p {
+    margin: 0.625rem 0;
+    font-size: 0.8125rem;
+}
+
+.submission-details strong {
     color: var(--white);
     font-weight: 700;
 }
