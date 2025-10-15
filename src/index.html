@@ -3,186 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PB DAYS - Choose Your Specialties</title>
+    <title>PB DAYS - Custom MasterBox</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 3D Morphing Loader -->
-    <div class="loading-screen" id="loadingScreen">
-        <div class="loader-3d">
-            <div class="shape-morph"></div>
+    <!-- Wave Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="wave-container">
+            <svg class="wave" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                <path d="M0,0 C150,100 350,0 600,50 C850,100 1050,0 1200,50 L1200,120 L0,120 Z"></path>
+            </svg>
+            <svg class="wave wave2" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                <path d="M0,0 C150,80 350,20 600,60 C850,100 1050,20 1200,60 L1200,120 L0,120 Z"></path>
+            </svg>
         </div>
-        <div class="loading-content">
-            <h1>Thank You For Your Order!</h1>
-            <p>Preparing your MasterBox experience...</p>
-        </div>
+        <div class="loading-text">Loading PB DAYS...</div>
     </div>
 
     <!-- Main App -->
-    <div class="app" id="app">
-        <!-- Header -->
-        <div class="header">
-            <h1 class="title">PB DAYS</h1>
-            <p class="dates">October 15 – 17</p>
-            <div class="divider"></div>
-            <h2 class="subtitle">Choose Your Specialties</h2>
-            <p class="description">Customize Your Perfect MasterBox</p>
-        </div>
-
-        <!-- Loading State -->
-        <div class="app-loading" id="appLoading">
+    <div id="app" class="app-container">
+        <!-- App Loading Indicator -->
+        <div id="appLoading" class="app-loading">
             <div class="spinner"></div>
-            <p>Loading your session...</p>
+            <p>Loading your information...</p>
         </div>
 
-        <!-- Email Modal -->
-        <div class="modal" id="emailModal">
+        <!-- Email Input Modal -->
+        <div id="emailModal" class="email-modal">
             <div class="modal-content">
-                <h3>Enter Your Email</h3>
-                <p>We'll fetch your order details automatically</p>
+                <h2>🎁 Welcome to PB DAYS</h2>
+                <p>Enter your email to claim your Custom MasterBox</p>
                 <form id="emailForm">
-                    <input type="email" id="emailInput" placeholder="your@email.com" required>
-                    <button type="submit">
-                        <span class="btn-loading" id="emailLoading"></span>
+                    <input 
+                        type="email" 
+                        id="emailInput" 
+                        placeholder="Enter your email address"
+                        required
+                    />
+                    <button type="submit" class="email-submit-btn">
+                        <span class="spinner" id="emailLoading"></span>
                         <span id="emailText">Continue</span>
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- Order Card -->
-        <div class="order-card" id="orderCard">
-            <div class="welcome-section">
-                <h3 id="customerName">Welcome back!</h3>
-                <p class="welcome-subtitle">Let's customize your MasterBox</p>
+        <!-- Header -->
+        <header class="header">
+            <h1 class="title">PB DAYS</h1>
+            <p class="subtitle">October 15 – 17</p>
+        </header>
+
+        <!-- Welcome Section -->
+        <section class="welcome-section">
+            <h2>Choose Your Specialties</h2>
+            <p class="description">Customize Your Perfect MasterBox</p>
+        </section>
+
+        <!-- Customer Info Card -->
+        <div id="orderCard" class="order-card">
+            <div class="card-header">
+                <h3 id="customerName">Welcome!</h3>
+                <span class="badge">ELIGIBLE</span>
             </div>
-            <div class="badge">Eligible</div>
+            <p class="card-subtitle">Let's customize your MasterBox</p>
         </div>
 
-        <!-- Main Content -->
-        <div class="content" id="content">
-            <!-- Form -->
-            <div class="form-section" id="formSection">
-                <h2>Select Your Specialties</h2>
-                <p>Choose all that apply to your practice</p>
+        <!-- Specialty Selection Form -->
+        <section id="formSection" class="form-section">
+            <h3 class="section-title">Select Your Specialties</h3>
+            <p class="section-subtitle">Choose all that apply to your practice</p>
+            
+            <div id="counter" class="progress-counter">No specialties selected</div>
+
+            <div class="specialty-grid">
+                <div class="card" data-specialty="Endodontist">
+                    <div class="card-icon">🦷</div>
+                    <h4>Endodontist</h4>
+                </div>
                 
-                <div class="counter" id="counter">No specialties selected</div>
+                <div class="card" data-specialty="Prosthodontist">
+                    <div class="card-icon">👄</div>
+                    <h4>Prosthodontist</h4>
+                </div>
                 
-                <div class="grid">
-                    <div class="card" data-specialty="Endodontist">
-                        <div class="card-inner">
-                            <div class="specialty-label">Endodontist</div>
-                            <div class="dot"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="card" data-specialty="Prosthodontist">
-                        <div class="card-inner">
-                            <div class="specialty-label">Prosthodontist</div>
-                            <div class="dot"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="card" data-specialty="Orthodontist">
-                        <div class="card-inner">
-                            <div class="specialty-label">Orthodontist</div>
-                            <div class="dot"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="card" data-specialty="Oral And Maxillofacial Surgeon">
-                        <div class="card-inner">
-                            <div class="specialty-label">Oral & Maxillofacial Surgeon</div>
-                            <div class="dot"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="card" data-specialty="Paedodontist">
-                        <div class="card-inner">
-                            <div class="specialty-label">Paedodontist</div>
-                            <div class="dot"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="card" data-specialty="Periodontist">
-                        <div class="card-inner">
-                            <div class="specialty-label">Periodontist</div>
-                            <div class="dot"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="card" data-specialty="General Dentist">
-                        <div class="card-inner">
-                            <div class="specialty-label">General Dentist</div>
-                            <div class="dot"></div>
-                        </div>
-                    </div>
+                <div class="card" data-specialty="Orthodontist">
+                    <div class="card-icon">🪥</div>
+                    <h4>Orthodontist</h4>
+                </div>
+                
+                <div class="card" data-specialty="Oral & Maxillofacial Surgeon">
+                    <div class="card-icon">🏥</div>
+                    <h4>Oral & Maxillofacial Surgeon</h4>
+                </div>
+                
+                <div class="card" data-specialty="Paedodontist">
+                    <div class="card-icon">👶</div>
+                    <h4>Paedodontist</h4>
+                </div>
+                
+                <div class="card" data-specialty="Periodontist">
+                    <div class="card-icon">🦴</div>
+                    <h4>Periodontist</h4>
+                </div>
+                
+                <div class="card" data-specialty="General Dentist">
+                    <div class="card-icon">😁</div>
+                    <h4>General Dentist</h4>
                 </div>
             </div>
-
-            <!-- Already Submitted -->
-            <div class="result" id="alreadySubmitted">
-                <div class="result-icon warning">⚠️</div>
-                <h2>MasterBox Already Claimed</h2>
-                <p>This order has already claimed its Custom MasterBox</p>
-                <div class="info" id="submissionInfo"></div>
-            </div>
-        </div>
+        </section>
 
         <!-- Submit Button -->
-        <div class="submit-area" id="submitArea">
-            <button class="submit-btn" id="submitBtn">
-                <span class="submit-loading" id="submitLoading"></span>
+        <div id="submitArea" class="submit-area">
+            <button id="submitBtn" class="submit-btn" disabled>
+                <span class="spinner" id="submitLoading"></span>
                 <span id="submitText">Select Specialties</span>
             </button>
         </div>
-    </div>
 
-    <!-- Success Modal Popup with Glowing Box -->
-    <div class="success-modal" id="successModal">
-        <div class="success-backdrop" id="successBackdrop"></div>
-        
-        <!-- Floating Particles -->
-        <div class="particles-container">
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
+        <!-- Already Submitted State -->
+        <div id="alreadySubmitted" class="already-submitted">
+            <div class="status-icon warning">⚠️</div>
+            <h2>MasterBox Already Claimed</h2>
+            <p>This order has already claimed its Custom MasterBox</p>
+            <div id="submissionInfo" class="submission-details"></div>
+            
+            <!-- ✅ NEW: Return to PinkBlue Button -->
+            <button id="returnToPinkBlue" class="return-btn">
+                Return to PinkBlue
+            </button>
         </div>
-        
-        <div class="success-modal-content">
-            <!-- 3D Tilting MasterBox with Glow -->
-            <div class="masterbox-container">
-                <div class="box-glow-ring"></div>
-                <div class="masterbox-tilting" id="masterboxTilt">
-                    <img src="https://email-editor-resources.s3.amazonaws.com/images/82618240/ChatGPT%20Image%20Oct%2013%2C%202025%2C%2001_53_38%20AM.png" alt="MasterBox" class="box-img">
+
+        <!-- Success Modal -->
+        <div id="successModal" class="success-modal">
+            <div class="success-content">
+                <div class="success-icon">🎉</div>
+                <h2>MasterBox Claimed Successfully!</h2>
+                <p>Your Custom MasterBox will be prepared based on your selected specialties</p>
+                
+                <div class="button-group">
+                    <button id="shareModalBtn" class="modal-btn primary">
+                        Share on WhatsApp
+                    </button>
+                    <button id="returnModalBtn" class="modal-btn secondary">
+                        Return to PinkBlue
+                    </button>
                 </div>
-            </div>
-
-            <h2 class="success-title">MasterBox Confirmed!</h2>
-            <p class="success-desc">Your Custom MasterBox will be delivered after your order is delivered</p>
-            <div class="success-badge-modal">Custom MasterBox Reserved</div>
-
-            <!-- Action Buttons -->
-            <div class="modal-actions">
-                <button class="modal-action-btn share-modal-btn" id="shareModalBtn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                    </svg>
-                    Share with Doctors
-                </button>
-                <button class="modal-action-btn return-modal-btn" id="returnModalBtn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    </svg>
-                    Return to PinkBlue
-                </button>
             </div>
         </div>
     </div>
