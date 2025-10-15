@@ -43,7 +43,7 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Loading Screen with 2-Second Circular Progress */
+/* Loading Screen with 2-Second Animation */
 .loading-screen {
     position: fixed;
     top: 0;
@@ -148,6 +148,7 @@ body {
     }
 }
 
+/* ✅ UPDATED: Shape morphs to green checkmark */
 .shape-morph {
     width: 150px;
     height: 150px;
@@ -155,59 +156,101 @@ body {
     top: 50%;
     left: 50%;
     transform-style: preserve-3d;
-    animation: 
-        morphShape 8s ease-in-out infinite,
-        rotate3d 12s linear infinite;
+    animation: morphToCheck 2s ease-in-out forwards;
     z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-@keyframes morphShape {
-    0%, 100% {
+/* ✅ NEW: Animation that transforms shape to green circle */
+@keyframes morphToCheck {
+    /* 0-60% Rotating morphing shape (white/gray) */
+    0% {
         border-radius: 50%;
         background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
         box-shadow: 
             0 0 40px rgba(255, 255, 255, 0.4),
             inset 0 0 40px rgba(255, 255, 255, 0.1);
-        transform: translate(-50%, -50%) scale(1);
+        transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg) scale(1);
     }
-    25% {
+    15% {
         border-radius: 8%;
         background: linear-gradient(135deg, #e0e0e0 0%, #ffffff 100%);
         box-shadow: 
             0 0 50px rgba(255, 255, 255, 0.5),
             inset 0 0 50px rgba(255, 255, 255, 0.15);
-        transform: translate(-50%, -50%) scale(1.1);
+        transform: translate(-50%, -50%) rotateX(180deg) rotateY(90deg) scale(1.1);
     }
-    50% {
+    30% {
         border-radius: 8%;
         background: linear-gradient(135deg, #ffffff 0%, #d0d0d0 100%);
         box-shadow: 
             0 0 60px rgba(255, 255, 255, 0.6),
             inset 0 0 60px rgba(255, 255, 255, 0.2);
-        transform: translate(-50%, -50%) scale(1) rotate(45deg);
+        transform: translate(-50%, -50%) rotateX(360deg) rotateY(180deg) rotate(45deg) scale(1);
     }
-    75% {
+    45% {
         border-radius: 8%;
         background: linear-gradient(135deg, #d0d0d0 0%, #ffffff 100%);
         box-shadow: 
             0 0 50px rgba(255, 255, 255, 0.5),
             inset 0 0 50px rgba(255, 255, 255, 0.15);
-        transform: translate(-50%, -50%) scale(1.1) rotate(0deg);
+        transform: translate(-50%, -50%) rotateX(540deg) rotateY(270deg) scale(1.1);
+    }
+    
+    /* 60-70% Transform to green circle */
+    60% {
+        border-radius: 50%;
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        box-shadow: 
+            0 0 60px rgba(34, 197, 94, 0.6),
+            inset 0 0 40px rgba(255, 255, 255, 0.2);
+        transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg) scale(0.9);
+    }
+    
+    /* 70-100% Green circle with checkmark stays visible */
+    70%, 100% {
+        border-radius: 50%;
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        box-shadow: 
+            0 0 80px rgba(34, 197, 94, 0.8),
+            inset 0 0 60px rgba(255, 255, 255, 0.3),
+            0 0 0 8px rgba(34, 197, 94, 0.3);
+        transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg) scale(1);
     }
 }
 
-@keyframes rotate3d {
-    0% {
-        transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+/* ✅ NEW: White checkmark appears inside green circle */
+.shape-morph::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 90px;
+    font-weight: 900;
+    color: white;
+    opacity: 0;
+    animation: checkAppear 2s ease-in-out forwards;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes checkAppear {
+    0%, 55% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0) rotate(-45deg);
     }
-    33% {
-        transform: translate(-50%, -50%) rotateX(360deg) rotateY(180deg) rotateZ(0deg);
+    70% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.2) rotate(0deg);
     }
-    66% {
-        transform: translate(-50%, -50%) rotateX(180deg) rotateY(360deg) rotateZ(180deg);
+    85% {
+        transform: translate(-50%, -50%) scale(0.95) rotate(0deg);
     }
     100% {
-        transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg) rotateZ(360deg);
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
     }
 }
 
@@ -776,9 +819,9 @@ body {
     font-weight: 700;
 }
 
-/* ✅ ADDED: Already Submitted State Styles */
+/* Already Submitted State */
 .already-submitted {
-    display: none; /* Hidden by default */
+    display: none;
     padding: 2rem 1rem;
     text-align: center;
 }
@@ -848,7 +891,7 @@ body {
     font-weight: 700;
 }
 
-/* Submit Button - Sticky at Bottom (Always Visible) */
+/* Submit Button - Sticky at Bottom */
 .submit-area {
     padding: 0.75rem 1rem;
     border-top: 1px solid var(--glass-border);
