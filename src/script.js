@@ -10,15 +10,15 @@ class PBDaysApp {
         this.orderData = null;
         this.isSubmitting = false;
         this.isTestMode = false;
-        
+        this.INIT_TIMEOUT = 5000; // ✅ 5 second timeout for initialization
         this.initialize();
     }
-    
+
     initialize() {
         this.setupEventListeners();
         this.startWaveAnimation();
     }
-    
+
     setupEventListeners() {
         const emailForm = document.getElementById('emailForm');
         if (emailForm) {
@@ -27,24 +27,24 @@ class PBDaysApp {
                 this.handleEmailSubmission();
             });
         }
-        
+
         const specialtyCards = document.querySelectorAll('.card');
         specialtyCards.forEach(card => {
             card.addEventListener('click', () => {
                 this.toggleCard(card);
             });
         });
-        
+
         const submitButton = document.getElementById('submitBtn');
         if (submitButton) {
             submitButton.addEventListener('click', () => {
                 this.handleFinalSubmission();
             });
         }
-        
+
         this.loadSavedSelections();
     }
-    
+
     startWaveAnimation() {
         setTimeout(() => {
             const waveContainer = document.getElementById('loadingScreen');
@@ -52,30 +52,31 @@ class PBDaysApp {
             
             if (waveContainer && mainApp) {
                 waveContainer.classList.add('fade-out');
-                
                 setTimeout(() => {
                     waveContainer.style.display = 'none';
                     mainApp.classList.add('show');
                     this.initializeApplication();
                 }, 1500);
             }
-        }, 2000); // 2 seconds loading time
+        }, 2000);
     }
-    
+
     async initializeApplication() {
         console.log('⚙️ Initializing application...');
         this.showAppLoading();
-        
+
+        // ✅ Add 5 second timeout wrapper
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('INITIALIZATION_TIMEOUT')), this.INIT_TIMEOUT);
+        });
+
         try {
-            // FIRST: Check for email in URL parameter (from Magento)
             const urlParams = new URLSearchParams(window.location.search);
             const emailParam = urlParams.get('email');
-            
+
             if (emailParam) {
-                // Email passed via query parameter from Magento
                 console.log('📧 Email found in URL parameter:', emailParam);
                 
-                // Check for test mode
                 if (emailParam.includes('-forcefetch')) {
                     this.activateTestMode();
                     this.customerData = {
@@ -87,24 +88,41 @@ class PBDaysApp {
                     this.generateMockOrder();
                     this.displayOrderInfo();
                 } else {
-                    // Fetch real order using email
-                    await this.fetchCustomerOrder(emailParam);
-                    
-                    if (this.customerData && this.orderData) {
-                        this.displayOrderInfo();
+                    // ✅ Wait up to 5 seconds for order fetch
+                    try {
+                        await Promise.race([
+                            this.fetchCustomerOrder(emailParam),
+                            timeoutPromise
+                        ]);
                         
-                        const alreadySubmitted = await this.checkExistingSubmission();
-                        if (alreadySubmitted) {
-                            this.showAlreadySubmittedState();
+                        if (this.customerData && this.orderData) {
+                            this.displayOrderInfo();
+                            const alreadySubmitted = await this.checkExistingSubmission();
+                            if (alreadySubmitted) {
+                                this.showAlreadySubmittedState();
+                                return;
+                            }
+                        } else {
+                            throw new Error('No orders found for this email');
+                        }
+                    } catch (error) {
+                        if (error.message === 'ORDER_ALREADY_CLAIMED') {
+                            // Already handled in fetchCustomerOrder
                             return;
                         }
-                    } else {
-                        throw new Error('No orders found for this email');
+                        if (error.message === 'INITIALIZATION_TIMEOUT') {
+                            console.log('⏱️ Initialization timeout - showing email modal');
+                            throw error;
+                        }
+                        throw error;
                     }
                 }
             } else {
-                // FALLBACK: Try existing bearer token method
-                await this.getCustomerInformation();
+                // ✅ Try bearer token with timeout
+                await Promise.race([
+                    this.getCustomerInformation(),
+                    timeoutPromise
+                ]);
                 
                 if (this.customerData) {
                     console.log('✅ Customer found:', this.customerData.email);
@@ -114,15 +132,28 @@ class PBDaysApp {
                         this.generateMockOrder();
                         this.displayOrderInfo();
                     } else {
-                        await this.fetchCustomerOrder(this.customerData.email);
-                        if (this.orderData) {
-                            this.displayOrderInfo();
+                        try {
+                            await Promise.race([
+                                this.fetchCustomerOrder(this.customerData.email),
+                                timeoutPromise
+                            ]);
                             
-                            const alreadySubmitted = await this.checkExistingSubmission();
-                            if (alreadySubmitted) {
-                                this.showAlreadySubmittedState();
+                            if (this.orderData) {
+                                this.displayOrderInfo();
+                                const alreadySubmitted = await this.checkExistingSubmission();
+                                if (alreadySubmitted) {
+                                    this.showAlreadySubmittedState();
+                                    return;
+                                }
+                            }
+                        } catch (error) {
+                            if (error.message === 'ORDER_ALREADY_CLAIMED') {
                                 return;
                             }
+                            if (error.message === 'INITIALIZATION_TIMEOUT') {
+                                throw error;
+                            }
+                            throw error;
                         }
                     }
                 } else {
@@ -130,29 +161,27 @@ class PBDaysApp {
                 }
             }
         } catch (error) {
-            console.log('ℹ️ No customer session, showing email modal');
+            console.log('ℹ️ Auto-login failed, showing email modal:', error.message);
             this.showEmailInputModal();
             return;
         }
-        
+
         this.hideAppLoading();
         this.updateUserInterface();
     }
-    
+
     activateTestMode() {
         console.log('🧪 TEST MODE ACTIVATED');
         this.isTestMode = true;
-        
         const testBadge = document.createElement('div');
         testBadge.className = 'test-badge';
         testBadge.textContent = 'TEST MODE';
         document.body.appendChild(testBadge);
     }
-    
+
     generateMockOrder() {
         const cleanEmail = this.customerData.email.replace('-forcefetch', '');
         this.customerData.email = cleanEmail;
-        
         this.orderData = {
             id: `TEST_${Date.now()}`,
             increment_id: `TEST-${Math.floor(Math.random() * 10000)}`,
@@ -160,21 +189,21 @@ class PBDaysApp {
             status: 'test'
         };
     }
-    
+
     showAppLoading() {
         const loadingElement = document.getElementById('appLoading');
         if (loadingElement) {
             loadingElement.style.display = 'flex';
         }
     }
-    
+
     hideAppLoading() {
         const loadingElement = document.getElementById('appLoading');
         if (loadingElement) {
             loadingElement.style.display = 'none';
         }
     }
-    
+
     showEmailInputModal() {
         this.hideAppLoading();
         const modal = document.getElementById('emailModal');
@@ -182,101 +211,104 @@ class PBDaysApp {
             modal.classList.add('show');
         }
     }
-    
+
     async handleEmailSubmission() {
         const emailInput = document.getElementById('emailInput');
         const fetchLoader = document.getElementById('emailLoading');
         const fetchLabel = document.getElementById('emailText');
-        
+
         if (!emailInput) return;
-        
+
         const email = emailInput.value.trim();
         
         if (!email) {
             this.showUserMessage('Please enter your email address');
             return;
         }
-        
+
         if (!this.isValidEmailFormat(email.replace('-forcefetch', ''))) {
             this.showUserMessage('Please enter a valid email address');
             return;
         }
-        
+
         if (fetchLoader) fetchLoader.style.display = 'inline-block';
-        if (fetchLabel) fetchLabel.textContent = 'Processing...';
-        
+        if (fetchLabel) fetchLabel.textContent = 'Checking order...';
+
         try {
             if (email.includes('-forcefetch')) {
                 console.log('🧪 Test mode detected from email');
                 this.activateTestMode();
-                
                 this.customerData = {
                     id: `TEST_${Date.now()}`,
                     email: email.replace('-forcefetch', ''),
                     firstname: 'Test',
                     lastname: 'User'
                 };
-                
                 this.generateMockOrder();
                 this.hideEmailModal();
                 this.displayOrderInfo();
                 this.updateUserInterface();
-                
             } else {
-                await this.fetchCustomerOrder(email);
-                
-                if (this.customerData && this.orderData) {
-                    this.hideEmailModal();
-                    this.displayOrderInfo();
-                    
-                    const alreadySubmitted = await this.checkExistingSubmission();
-                    if (alreadySubmitted) {
-                        this.showAlreadySubmittedState();
+                try {
+                    await this.fetchCustomerOrder(email);
+                    if (this.customerData && this.orderData) {
+                        this.hideEmailModal();
+                        this.displayOrderInfo();
+                        const alreadySubmitted = await this.checkExistingSubmission();
+                        if (alreadySubmitted) {
+                            this.showAlreadySubmittedState();
+                        } else {
+                            this.updateUserInterface();
+                        }
                     } else {
-                        this.updateUserInterface();
+                        throw new Error('No recent orders found for this email');
                     }
-                } else {
-                    throw new Error('No recent orders found for this email');
+                } catch (error) {
+                    if (error.message === 'ORDER_ALREADY_CLAIMED') {
+                        this.hideEmailModal();
+                        return;
+                    }
+                    throw error;
                 }
             }
         } catch (error) {
             console.error('❌ Email processing failed:', error);
-            this.showUserMessage('Could not find recent orders. Add "-forcefetch" to your email for testing mode.');
+            this.showUserMessage('No recent orders found for this email address. Please ensure you have placed an order in the last 30 days.');
         } finally {
             if (fetchLoader) fetchLoader.style.display = 'none';
             if (fetchLabel) fetchLabel.textContent = 'Continue';
         }
     }
-    
+
     hideEmailModal() {
         const modal = document.getElementById('emailModal');
         if (modal) {
             modal.classList.remove('show');
         }
     }
-    
+
     displayOrderInfo() {
         if (!this.customerData || !this.orderData) return;
-        
+
         const welcomeElement = document.getElementById('customerName');
         const orderCard = document.getElementById('orderCard');
-        
+
         if (welcomeElement) {
             welcomeElement.textContent = `Welcome, ${this.customerData.firstname}!`;
         }
-        
+
         if (orderCard) {
             orderCard.classList.add('show');
         }
     }
-    
+
     async getCustomerInformation() {
         const bearerToken = this.findBearerToken();
         
         if (!bearerToken) {
             throw new Error('No authentication token available');
         }
-        
+
         console.log('🔑 Attempting customer authentication...');
         
         const response = await fetch('/.netlify/functions/get-customer-info', {
@@ -286,35 +318,33 @@ class PBDaysApp {
                 'Authorization': `Bearer ${bearerToken}`
             }
         });
-        
+
         const data = await response.json();
         
         if (data.fallback || !data.success) {
             throw new Error('Customer API unavailable');
         }
-        
+
         this.customerData = data.customer;
     }
-    
+
     findBearerToken() {
         try {
             if (window.parent !== window) {
-                const token = window.parent.customerToken || 
-                             window.parent.localStorage?.getItem('customerToken');
+                const token = window.parent.customerToken || window.parent.localStorage?.getItem('customerToken');
                 if (token) return token;
             }
         } catch (error) {
             // CORS error expected
         }
-        
-        const localToken = localStorage.getItem('customerToken') || 
-                          sessionStorage.getItem('customerToken');
+
+        const localToken = localStorage.getItem('customerToken') || sessionStorage.getItem('customerToken');
         if (localToken) return localToken;
-        
+
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('token');
     }
-    
+
     async fetchCustomerOrder(email) {
         console.log('📦 Fetching latest order for:', email);
         
@@ -323,27 +353,53 @@ class PBDaysApp {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email })
         });
-        
+
         const data = await response.json();
-        
+
+        // ✅ CHECK IF ORDER IS ALREADY CLAIMED
+        if (data.alreadyClaimed) {
+            console.log('❌ Order already claimed');
+            this.customerData = data.customer;
+            this.orderData = data.order;
+            
+            // Show already claimed state immediately
+            this.hideAppLoading();
+            this.hideEmailModal(); // ✅ Ensure email modal is hidden
+            this.displayOrderInfo();
+            this.showAlreadySubmittedState();
+            
+            // Update submission info
+            const submissionInfoElement = document.getElementById('submissionInfo');
+            if (submissionInfoElement && data.submissionData) {
+                submissionInfoElement.innerHTML = `
+                    <strong>Order:</strong> #${data.order.increment_id}<br/>
+                    <strong>Specialties:</strong> ${data.submissionData.specialties || 'Previously claimed'}<br/>
+                    <strong>Status:</strong> Already Claimed
+                `;
+            }
+            
+            // Throw specific error to prevent further processing
+            throw new Error('ORDER_ALREADY_CLAIMED');
+        }
+
+        // ✅ NORMAL FLOW - ORDER NOT CLAIMED
         if (!data.success) {
             throw new Error(data.error || 'Order fetch failed');
         }
-        
+
         this.customerData = data.customer;
         this.orderData = data.order;
-        
         console.log('📦 Order retrieved:', this.orderData.increment_id);
     }
-    
+
     async checkExistingSubmission() {
         if (this.isTestMode) {
             console.log('🧪 Test mode - skipping duplicate check');
             return false;
         }
-        
+
         if (!this.orderData) return false;
-        
+
         try {
             const response = await fetch('/.netlify/functions/check-submission', {
                 method: 'POST',
@@ -353,31 +409,32 @@ class PBDaysApp {
                     orderIncrementId: this.orderData.increment_id
                 })
             });
-            
+
             const data = await response.json();
             
-            if (data.hasSubmitted) {
+            if (data.hasSubmitted || data.duplicate) {
                 const submissionInfoElement = document.getElementById('submissionInfo');
-                if (submissionInfoElement) {
+                if (submissionInfoElement && data.submissionData) {
                     submissionInfoElement.innerHTML = `
-                        <p><strong>Order:</strong> #${this.orderData.increment_id}</p>
-                        <p><strong>Submitted:</strong> ${new Date(data.submissionData.timestamp).toLocaleDateString()}</p>
-                        <p><strong>Specialties:</strong> ${data.submissionData.specialties}</p>
+                        <strong>Order:</strong> #${this.orderData.increment_id}<br/>
+                        <strong>Specialties:</strong> ${data.submissionData.specialties || 'N/A'}<br/>
+                        <strong>Status:</strong> Already Claimed
                     `;
                 }
                 return true;
             }
-            
+
             return false;
+
         } catch (error) {
             console.log('⚠️ Could not verify previous submission');
             return false;
         }
     }
-    
+
     toggleCard(card) {
         if (this.isSubmitting) return;
-        
+
         const specialtyValue = card.dataset.specialty;
         
         if (card.classList.contains('selected')) {
@@ -387,16 +444,16 @@ class PBDaysApp {
             card.classList.add('selected');
             this.selectedSpecialties.add(specialtyValue);
         }
-        
+
         this.updateProgressIndicator();
         this.updateSubmitButtonState();
         this.saveCurrentSelections();
-        
+
         if (navigator.vibrate) {
             navigator.vibrate(10);
         }
     }
-    
+
     updateProgressIndicator() {
         const count = this.selectedSpecialties.size;
         const progressText = document.getElementById('counter');
@@ -414,13 +471,13 @@ class PBDaysApp {
             }
         }
     }
-    
+
     updateSubmitButtonState() {
         const submitButton = document.getElementById('submitBtn');
         const submitText = document.getElementById('submitText');
         
         if (!submitButton || !submitText) return;
-        
+
         if (this.selectedSpecialties.size === 0) {
             submitButton.disabled = true;
             submitText.textContent = 'Select Specialties';
@@ -429,7 +486,7 @@ class PBDaysApp {
             submitText.textContent = this.isTestMode ? 'Test Claim' : 'Claim My MasterBox';
         }
     }
-    
+
     async handleFinalSubmission() {
         if (this.isSubmitting || this.selectedSpecialties.size === 0) return;
         
@@ -437,13 +494,12 @@ class PBDaysApp {
             this.showUserMessage('Order information not available');
             return;
         }
-        
+
         this.isSubmitting = true;
         this.showSubmissionLoading();
-        
+
         try {
             const specialtiesArray = Array.from(this.selectedSpecialties);
-            
             const submissionPayload = {
                 email: this.customerData.email,
                 firstname: this.customerData.firstname,
@@ -455,31 +511,31 @@ class PBDaysApp {
                 orderAmount: this.orderData.grand_total,
                 testMode: this.isTestMode
             };
-            
+
             console.log('📤 Submitting MasterBox claim...');
-            
+
             const response = await fetch('/.netlify/functions/submit-specialties', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(submissionPayload)
             });
-            
+
             const result = await response.json();
-            
+
             if (response.status === 409) {
                 this.showUserMessage('This order has already claimed its MasterBox');
                 this.showAlreadySubmittedState();
                 return;
             }
-            
+
             if (!response.ok || !result.success) {
                 throw new Error(result.error || `Server error: ${response.status}`);
             }
-            
+
             console.log('✅ MasterBox claimed successfully!');
             this.clearStoredSelections();
             this.showSuccessState();
-            
+
         } catch (error) {
             console.error('❌ Submission failed:', error);
             this.showUserMessage('Failed to claim MasterBox. Please try again.');
@@ -488,58 +544,57 @@ class PBDaysApp {
             this.hideSubmissionLoading();
         }
     }
-    
+
     showSubmissionLoading() {
         const submitButton = document.getElementById('submitBtn');
         const submitLoader = document.getElementById('submitLoading');
         const submitText = document.getElementById('submitText');
-        
+
         if (submitButton) submitButton.disabled = true;
         if (submitLoader) submitLoader.style.display = 'inline-block';
         if (submitText) submitText.textContent = 'Processing...';
     }
-    
+
     hideSubmissionLoading() {
         const submitLoader = document.getElementById('submitLoading');
         if (submitLoader) submitLoader.style.display = 'none';
         this.updateSubmitButtonState();
     }
-    
+
     showAlreadySubmittedState() {
         const specialtySection = document.getElementById('formSection');
         const submitArea = document.getElementById('submitArea');
         const alreadySubmittedState = document.getElementById('alreadySubmitted');
-        
+
         if (specialtySection) specialtySection.style.display = 'none';
         if (submitArea) submitArea.style.display = 'none';
         if (alreadySubmittedState) alreadySubmittedState.classList.add('show');
     }
-    
+
     showSuccessState() {
         const specialtySection = document.getElementById('formSection');
         const submitArea = document.getElementById('submitArea');
         const successModal = document.getElementById('successModal');
-        
+
         if (specialtySection) specialtySection.style.display = 'none';
         if (submitArea) submitArea.style.display = 'none';
         
         if (successModal) {
             successModal.classList.add('show');
-            
             setTimeout(() => {
                 this.setupShareModalButton();
                 this.setupReturnModalButton();
             }, 300);
         }
     }
-    
+
     setupShareModalButton() {
         const shareBtn = document.getElementById('shareModalBtn');
         if (!shareBtn) return;
-        
+
         shareBtn.addEventListener('click', async () => {
             const shareText = "🎁 I just claimed my Custom MasterBox from PB DAYS!\n\nGet yours too during October 15-17.\n\nVisit: https://pinkblue.in";
-            
+
             if (navigator.share) {
                 try {
                     await navigator.share({
@@ -556,11 +611,10 @@ class PBDaysApp {
             }
         });
     }
-    
+
     fallbackWhatsAppShare(text) {
         const message = encodeURIComponent(text);
         const whatsappUrl = `https://api.whatsapp.com/send?text=${message}`;
-        
         const newWindow = window.open(whatsappUrl, '_blank');
         
         if (!newWindow) {
@@ -568,7 +622,7 @@ class PBDaysApp {
             alert('Message copied! Open WhatsApp to paste and share.');
         }
     }
-    
+
     copyToClipboard(text) {
         const textarea = document.createElement('textarea');
         textarea.value = text;
@@ -579,7 +633,7 @@ class PBDaysApp {
         document.execCommand('copy');
         document.body.removeChild(textarea);
     }
-    
+
     setupReturnModalButton() {
         const returnBtn = document.getElementById('returnModalBtn');
         if (returnBtn) {
@@ -588,7 +642,7 @@ class PBDaysApp {
             });
         }
     }
-    
+
     saveCurrentSelections() {
         try {
             const selections = Array.from(this.selectedSpecialties);
@@ -597,7 +651,7 @@ class PBDaysApp {
             console.log('⚠️ Could not save selections to storage');
         }
     }
-    
+
     loadSavedSelections() {
         try {
             const saved = localStorage.getItem('pb_days_specialty_selections');
@@ -618,7 +672,7 @@ class PBDaysApp {
             console.log('⚠️ Could not load saved selections');
         }
     }
-    
+
     clearStoredSelections() {
         try {
             localStorage.removeItem('pb_days_specialty_selections');
@@ -626,17 +680,17 @@ class PBDaysApp {
             // Not critical
         }
     }
-    
+
     updateUserInterface() {
         this.updateProgressIndicator();
         this.updateSubmitButtonState();
     }
-    
+
     isValidEmailFormat(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
     }
-    
+
     showUserMessage(message) {
         alert(message);
     }
