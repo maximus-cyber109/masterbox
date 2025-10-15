@@ -41,7 +41,7 @@ class PBDaysApp {
             });
         }
 
-        // ✅ NEW: Return to PinkBlue button on Already Claimed screen
+        // Return to PinkBlue button
         const returnButton = document.getElementById('returnToPinkBlue');
         if (returnButton) {
             returnButton.addEventListener('click', () => {
@@ -87,18 +87,17 @@ class PBDaysApp {
                         firstname: 'Test',
                         lastname: 'User'
                     };
-                    this.displayCustomerInfo();
+                    this.displayOrderInfo();
                 } else {
-                    // ✅ NEW FLOW: Only fetch customer info, not order yet
+                    // NEW: Only validate customer email, not order
                     await this.fetchCustomerInfoOnly(emailParam);
                     if (this.customerData) {
-                        this.displayCustomerInfo();
+                        this.displayOrderInfo();
                     } else {
                         throw new Error('Customer not found');
                     }
                 }
             } else {
-                // Try bearer token method
                 await this.getCustomerInformation();
                 if (this.customerData) {
                     console.log('✅ Customer found:', this.customerData.email);
@@ -107,7 +106,7 @@ class PBDaysApp {
                         this.activateTestMode();
                     }
                     
-                    this.displayCustomerInfo();
+                    this.displayOrderInfo();
                 } else {
                     throw new Error('No customer data available');
                 }
@@ -186,14 +185,14 @@ class PBDaysApp {
                     lastname: 'User'
                 };
                 this.hideEmailModal();
-                this.displayCustomerInfo();
+                this.displayOrderInfo();
                 this.updateUserInterface();
             } else {
-                // ✅ NEW FLOW: Only validate email exists, not order
+                // NEW: Only validate email, not order
                 await this.fetchCustomerInfoOnly(email);
                 if (this.customerData) {
                     this.hideEmailModal();
-                    this.displayCustomerInfo();
+                    this.displayOrderInfo();
                     this.updateUserInterface();
                 } else {
                     throw new Error('Email not found');
@@ -215,7 +214,7 @@ class PBDaysApp {
         }
     }
 
-    displayCustomerInfo() {
+    displayOrderInfo() {
         if (!this.customerData) return;
 
         const welcomeElement = document.getElementById('customerName');
@@ -273,7 +272,7 @@ class PBDaysApp {
         return urlParams.get('token');
     }
 
-    // ✅ NEW FUNCTION: Fetch only customer info, no order validation
+    // NEW: Fast email validation only
     async fetchCustomerInfoOnly(email) {
         console.log('📧 Validating customer email:', email);
         
@@ -293,7 +292,7 @@ class PBDaysApp {
         console.log('✅ Customer validated:', this.customerData.email);
     }
 
-    // ✅ MOVED: Fetch order only during submission
+    // MOVED: Order fetch now happens during submission
     async fetchCustomerOrder(email) {
         console.log('📦 Fetching latest order for:', email);
         
@@ -305,22 +304,16 @@ class PBDaysApp {
 
         const data = await response.json();
 
-        // Check if order is already claimed
         if (data.alreadyClaimed) {
             console.log('❌ Order already claimed');
             this.orderData = data.order;
-            
-            // Show already claimed state
-            this.hideAppLoading();
             this.showAlreadySubmittedState();
             
-            // Update submission info
             const submissionInfoElement = document.getElementById('submissionInfo');
             if (submissionInfoElement && data.submissionData) {
                 submissionInfoElement.innerHTML = `
-                    <strong>Order:</strong> #${data.order.increment_id}<br/>
-                    <strong>Specialties:</strong> ${data.submissionData.specialties || 'Previously claimed'}<br/>
-                    <strong>Status:</strong> Already Claimed
+                    <p><strong>Order:</strong> #${data.order.increment_id}</p>
+                    <p><strong>Specialties:</strong> ${data.submissionData.specialties || 'Previously claimed'}</p>
                 `;
             }
             
@@ -402,21 +395,19 @@ class PBDaysApp {
         this.showSubmissionLoading();
 
         try {
-            // ✅ NEW: Fetch order NOW during submission (not during initialization)
+            // KEY CHANGE: Fetch order NOW during submission
             if (!this.orderData && !this.isTestMode) {
                 console.log('📦 Fetching order during submission...');
                 try {
                     await this.fetchCustomerOrder(this.customerData.email);
                 } catch (error) {
                     if (error.message === 'ORDER_ALREADY_CLAIMED') {
-                        // Already handled in fetchCustomerOrder
                         return;
                     }
                     throw error;
                 }
             }
 
-            // Generate test order if in test mode
             if (this.isTestMode && !this.orderData) {
                 this.orderData = {
                     id: `TEST_${Date.now()}`,
