@@ -1,28 +1,7 @@
-// Auto-detect environment based on request headers
-function getEnvironmentConfig(event) {
-    const referer = event.headers.referer || event.headers.Referer || '';
-    const origin = event.headers.origin || '';
-    const host = event.headers.host || '';
-    
-    // Check all possible headers for UAT
-    const isUAT = referer.includes('uat.pinkblue.in') || 
-                  origin.includes('uat.pinkblue.in') ||
-                  host.includes('uat');
-    
-    console.log('🔍 Request Headers:');
-    console.log('  Referer:', referer);
-    console.log('  Origin:', origin);
-    console.log('  Host:', host);
-    
-    return {
-        baseUrl: isUAT ? process.env.MAGENTO_UAT_BASE_URL : process.env.MAGENTO_BASE_URL,
-        apiToken: isUAT ? process.env.MAGENTO_UAT_API_TOKEN : process.env.MAGENTO_API_TOKEN,
-        environment: isUAT ? 'UAT' : 'PRODUCTION'
-    };
-}
+const axios = require('axios');
 
 exports.handler = async (event, context) => {
-    console.log('📦 Get Latest Order - Auto Environment Detection');
+    console.log('📦 Get Latest Order - Enhanced with test overrides');
     
     const headers = {
         'Access-Control-Allow-Origin': '*',
@@ -60,10 +39,6 @@ exports.handler = async (event, context) => {
         }
 
         const normalizedEmail = email.toLowerCase().trim();
-        
-        // Get environment configuration
-        const config = getEnvironmentConfig(event);
-        console.log(`🌍 Environment: ${config.environment}`);
         console.log('Searching for customer email:', normalizedEmail);
 
         // ✅ Test Override - Force Fetch Mode
@@ -88,7 +63,6 @@ exports.handler = async (event, context) => {
                 headers,
                 body: JSON.stringify({
                     success: true,
-                    environment: 'TEST',
                     customer: {
                         id: `TEST_${Date.now()}`,
                         email: cleanEmail,
@@ -108,30 +82,71 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // ✅ Check configuration
-        if (!config.apiToken || !config.baseUrl) {
-            console.error('❌ Missing Magento configuration for environment:', config.environment);
-            console.error('Base URL:', config.baseUrl);
-            console.error('API Token exists:', !!config.apiToken);
+        // ✅ Special Test Overrides
+        if (normalizedEmail.includes('test_override_maaz') || normalizedEmail.includes('test_override_valli')) {
+            console.log('✅ Admin override detected');
+            const cleanEmail = normalizedEmail.replace(/[_-]?test_override_(maaz|valli)/g, '@gmail.com');
+            
+            const mockData = {
+                entity_id: '789123',
+                increment_id: 'ADMIN_' + Date.now(),
+                grand_total: '15000.00',
+                status: 'complete',
+                created_at: new Date().toISOString(),
+                customer_email: cleanEmail,
+                customer_firstname: 'Admin',
+                customer_lastname: 'User',
+                order_currency_code: 'INR'
+            };
+
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    success: true,
+                    customer: {
+                        id: mockData.entity_id,
+                        email: cleanEmail,
+                        firstname: mockData.customer_firstname,
+                        lastname: mockData.customer_lastname
+                    },
+                    order: {
+                        id: mockData.entity_id,
+                        increment_id: mockData.increment_id,
+                        status: mockData.status,
+                        created_at: mockData.created_at,
+                        grand_total: mockData.grand_total,
+                        currency_code: mockData.order_currency_code
+                    },
+                    testMode: true
+                })
+            };
+        }
+
+        // ✅ Real Magento API call
+        const API_TOKEN = process.env.MAGENTO_API_TOKEN;
+        const BASE_URL = process.env.MAGENTO_BASE_URL;
+        
+        if (!API_TOKEN || !BASE_URL) {
+            console.error('Missing Magento configuration');
             return {
                 statusCode: 500,
                 headers,
                 body: JSON.stringify({
                     success: false,
-                    error: 'Server configuration error',
-                    environment: config.environment
+                    error: 'Server configuration error'
                 })
             };
         }
 
-        console.log('Magento Base URL:', config.baseUrl);
+        console.log('Magento Base URL:', BASE_URL);
 
-        // ✅ Look for recent orders (last 30 days)
+        // Look for recent orders (last 30 days)
         const maxDaysAgo = new Date();
         maxDaysAgo.setDate(maxDaysAgo.getDate() - 30);
         maxDaysAgo.setHours(0, 0, 0, 0);
 
-        const searchUrl = `${config.baseUrl}/orders?` +
+        const searchUrl = `${BASE_URL}/orders?` +
             `searchCriteria[filterGroups][0][filters][0][field]=customer_email&` +
             `searchCriteria[filterGroups][0][filters][0][value]=${encodeURIComponent(normalizedEmail)}&` +
             `searchCriteria[filterGroups][0][filters][0][conditionType]=eq&` +
@@ -142,11 +157,11 @@ exports.handler = async (event, context) => {
             `searchCriteria[sortOrders][0][direction]=DESC&` +
             `searchCriteria[pageSize]=1`;
 
-        console.log('Making request to:', searchUrl);
+        console.log('Making request to Magento...');
 
         const response = await fetch(searchUrl, {
             headers: {
-                'Authorization': `Bearer ${config.apiToken}`,
+                'Authorization': `Bearer ${API_TOKEN}`,
                 'Content-Type': 'application/json'
             },
             timeout: 15000
@@ -157,7 +172,6 @@ exports.handler = async (event, context) => {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Magento API error:', response.status, errorText);
-            
             return {
                 statusCode: 404,
                 headers,
@@ -165,8 +179,7 @@ exports.handler = async (event, context) => {
                     success: false,
                     error: response.status === 404 ?
                         'No customer found with this email address' :
-                        `Magento API error: ${response.status}`,
-                    environment: config.environment
+                        `Magento API error: ${response.status}`
                 })
             };
         }
@@ -175,44 +188,93 @@ exports.handler = async (event, context) => {
         console.log('Orders found:', orderData.total_count || 0);
 
         if (orderData.items && orderData.items.length > 0) {
-            const recentOrder = orderData.items[0];
-            console.log('✅ Latest order:', {
-                increment_id: recentOrder.increment_id,
-                grand_total: recentOrder.grand_total,
-                status: recentOrder.status
+            const latestOrder = orderData.items[0];
+            
+            console.log('Latest order:', {
+                increment_id: latestOrder.increment_id,
+                grand_total: latestOrder.grand_total,
+                status: latestOrder.status
             });
 
+            // ✅ CHECK FOR DUPLICATE SUBMISSION
+            try {
+                console.log('🔍 Checking for duplicate submission...');
+                
+                const checkResponse = await axios.post(
+                    `${process.env.URL}/.netlify/functions/check-submission`,
+                    {
+                        orderId: latestOrder.entity_id,
+                        orderIncrementId: latestOrder.increment_id,
+                        email: normalizedEmail
+                    },
+                    {
+                        headers: { 'Content-Type': 'application/json' },
+                        timeout: 10000
+                    }
+                );
+
+                if (checkResponse.data.hasSubmitted || checkResponse.data.duplicate) {
+                    console.log('❌ Order already claimed');
+                    return {
+                        statusCode: 200,
+                        headers,
+                        body: JSON.stringify({
+                            success: false,
+                            alreadyClaimed: true,
+                            customer: {
+                                id: latestOrder.customer_id || Date.now(),
+                                email: latestOrder.customer_email || normalizedEmail,
+                                firstname: latestOrder.customer_firstname || 'Customer',
+                                lastname: latestOrder.customer_lastname || 'User'
+                            },
+                            order: {
+                                id: latestOrder.entity_id,
+                                increment_id: latestOrder.increment_id,
+                                status: latestOrder.status,
+                                created_at: latestOrder.created_at,
+                                grand_total: latestOrder.grand_total,
+                                currency_code: latestOrder.order_currency_code || 'INR'
+                            },
+                            submissionData: checkResponse.data.submissionData || {}
+                        })
+                    };
+                }
+
+            } catch (checkError) {
+                console.log('⚠️ Duplicate check failed, proceeding:', checkError.message);
+            }
+
+            // ✅ Return order data (not claimed yet)
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
                     success: true,
-                    environment: config.environment,
                     customer: {
-                        id: recentOrder.customer_id || Date.now(),
-                        email: recentOrder.customer_email || normalizedEmail,
-                        firstname: recentOrder.customer_firstname || 'Customer',
-                        lastname: recentOrder.customer_lastname || 'User'
+                        id: latestOrder.customer_id || Date.now(),
+                        email: latestOrder.customer_email || normalizedEmail,
+                        firstname: latestOrder.customer_firstname || 'Customer',
+                        lastname: latestOrder.customer_lastname || 'User'
                     },
                     order: {
-                        id: recentOrder.entity_id,
-                        increment_id: recentOrder.increment_id,
-                        status: recentOrder.status,
-                        created_at: recentOrder.created_at,
-                        grand_total: recentOrder.grand_total,
-                        currency_code: recentOrder.order_currency_code || 'INR'
+                        id: latestOrder.entity_id,
+                        increment_id: latestOrder.increment_id,
+                        status: latestOrder.status,
+                        created_at: latestOrder.created_at,
+                        grand_total: latestOrder.grand_total,
+                        currency_code: latestOrder.order_currency_code || 'INR'
                     }
                 })
             };
+
         } else {
-            console.log('❌ No orders found for email:', normalizedEmail);
+            console.log('No orders found for email:', normalizedEmail);
             return {
                 statusCode: 404,
                 headers,
                 body: JSON.stringify({
                     success: false,
-                    error: 'No recent orders found for this email address',
-                    environment: config.environment
+                    error: 'No recent orders found for this email address'
                 })
             };
         }
