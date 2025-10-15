@@ -18,25 +18,26 @@ exports.handler = async (event, context) => {
     try {
         const { orderId, orderIncrementId } = JSON.parse(event.body || '{}');
         
-        if (!orderId && !orderIncrementId) {
+        const checkOrderId = orderIncrementId || orderId;
+        
+        if (!checkOrderId) {
             return {
                 statusCode: 400,
                 headers,
                 body: JSON.stringify({
                     success: false,
-                    error: 'Order ID is required'
+                    error: 'Order ID required'
                 })
             };
         }
 
-        const searchOrderId = orderIncrementId || orderId;
-        
-        // ✅ Normalize: remove leading zeros
-        const normalizedOrderId = searchOrderId.toString().replace(/^0+/, '') || '0';
-        
-        console.log('Checking:', searchOrderId, '(normalized:', normalizedOrderId + ')');
+        // Normalize order ID (remove leading zeros)
+        const normalizedOrderId = checkOrderId.toString().replace(/^0+/, '') || '0';
+        console.log(`Checking: ${checkOrderId} (normalized: ${normalizedOrderId})`);
 
+        // Check Google Sheets via webhook
         if (!GOOGLE_SHEETS_WEBHOOK) {
+            console.log('⚠️ Google Sheets webhook not configured');
             return {
                 statusCode: 200,
                 headers,
@@ -47,61 +48,52 @@ exports.handler = async (event, context) => {
             };
         }
 
-        try {
-            const checkUrl = `${GOOGLE_SHEETS_WEBHOOK}?action=checkOrder&orderId=${encodeURIComponent(normalizedOrderId)}`;
-            
-            const response = await axios.get(checkUrl, {
-                timeout: 10000,
-                validateStatus: (status) => status < 500
-            });
+        const checkUrl = `${GOOGLE_SHEETS_WEBHOOK}?action=checkOrder&orderId=${encodeURIComponent(normalizedOrderId)}`;
+        
+        const response = await axios.get(checkUrl, {
+            timeout: 10000,
+            validateStatus: (status) => status < 500
+        });
 
-            if (response.data && response.data.exists) {
-                console.log('❌ Already claimed');
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({
-                        success: true,
-                        hasSubmitted: true,
-                        submissionData: {
-                            orderId: searchOrderId,
-                            timestamp: response.data.timestamp || 'N/A',
-                            specialties: response.data.specialties || 'Previously submitted'
-                        }
-                    })
-                };
-            } else {
-                console.log('✅ Eligible');
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({
-                        success: true,
-                        hasSubmitted: false
-                    })
-                };
-            }
-
-        } catch (error) {
-            console.error('Check failed:', error.message);
+        if (response.data && response.data.exists) {
+            console.log('❌ Already claimed');
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
                     success: true,
-                    hasSubmitted: false
+                    hasSubmitted: true,
+                    duplicate: true,
+                    submissionData: {
+                        orderId: normalizedOrderId,
+                        timestamp: new Date().toISOString(),
+                        specialties: 'Previously claimed'
+                    }
                 })
             };
         }
 
-    } catch (error) {
-        console.error('Error:', error.message);
+        console.log('✅ Not claimed yet');
         return {
             statusCode: 200,
             headers,
             body: JSON.stringify({
                 success: true,
                 hasSubmitted: false
+            })
+        };
+
+    } catch (error) {
+        console.error('❌ Check error:', error.message);
+        
+        // Fail open - allow submission if check fails
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+                success: true,
+                hasSubmitted: false,
+                warning: 'Could not verify submission status'
             })
         };
     }
