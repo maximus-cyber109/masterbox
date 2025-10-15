@@ -1,8 +1,9 @@
 const axios = require('axios');
 
 exports.handler = async (event, context) => {
+
     console.log('📦 Get Latest Order - Enhanced with test overrides');
-    
+
     const headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type',
@@ -26,7 +27,7 @@ exports.handler = async (event, context) => {
 
     try {
         const { email } = JSON.parse(event.body || '{}');
-        
+
         if (!email) {
             return {
                 statusCode: 400,
@@ -45,7 +46,7 @@ exports.handler = async (event, context) => {
         if (normalizedEmail.includes('-forcefetch')) {
             const cleanEmail = normalizedEmail.replace('-forcefetch', '');
             console.log('🧪 TEST MODE: Force fetch override detected');
-            
+
             const mockData = {
                 entity_id: `TEST_${Date.now()}`,
                 increment_id: `TEST-${Math.floor(Math.random() * 10000)}`,
@@ -86,7 +87,7 @@ exports.handler = async (event, context) => {
         if (normalizedEmail.includes('test_override_maaz') || normalizedEmail.includes('test_override_valli')) {
             console.log('✅ Admin override detected');
             const cleanEmail = normalizedEmail.replace(/[_-]?test_override_(maaz|valli)/g, '@gmail.com');
-            
+
             const mockData = {
                 entity_id: '789123',
                 increment_id: 'ADMIN_' + Date.now(),
@@ -126,7 +127,7 @@ exports.handler = async (event, context) => {
         // ✅ Real Magento API call
         const API_TOKEN = process.env.MAGENTO_API_TOKEN;
         const BASE_URL = process.env.MAGENTO_BASE_URL;
-        
+
         if (!API_TOKEN || !BASE_URL) {
             console.error('Missing Magento configuration');
             return {
@@ -158,7 +159,6 @@ exports.handler = async (event, context) => {
             `searchCriteria[pageSize]=1`;
 
         console.log('Making request to Magento...');
-
         const response = await fetch(searchUrl, {
             headers: {
                 'Authorization': `Bearer ${API_TOKEN}`,
@@ -189,7 +189,6 @@ exports.handler = async (event, context) => {
 
         if (orderData.items && orderData.items.length > 0) {
             const latestOrder = orderData.items[0];
-            
             console.log('Latest order:', {
                 increment_id: latestOrder.increment_id,
                 grand_total: latestOrder.grand_total,
@@ -199,7 +198,6 @@ exports.handler = async (event, context) => {
             // ✅ CHECK FOR DUPLICATE SUBMISSION
             try {
                 console.log('🔍 Checking for duplicate submission...');
-                
                 const checkResponse = await axios.post(
                     `${process.env.URL}/.netlify/functions/check-submission`,
                     {
@@ -215,11 +213,12 @@ exports.handler = async (event, context) => {
 
                 if (checkResponse.data.hasSubmitted || checkResponse.data.duplicate) {
                     console.log('❌ Order already claimed');
+                    // ✅ FIX: Return success: true with alreadyClaimed flag
                     return {
                         statusCode: 200,
                         headers,
                         body: JSON.stringify({
-                            success: false,
+                            success: true,  // ✅ Changed from false to true
                             alreadyClaimed: true,
                             customer: {
                                 id: latestOrder.customer_id || Date.now(),
@@ -266,7 +265,6 @@ exports.handler = async (event, context) => {
                     }
                 })
             };
-
         } else {
             console.log('No orders found for email:', normalizedEmail);
             return {
@@ -290,4 +288,5 @@ exports.handler = async (event, context) => {
             })
         };
     }
+
 };
