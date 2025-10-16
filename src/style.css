@@ -291,6 +291,7 @@ body {
     transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 .app.show {
@@ -580,7 +581,7 @@ body {
 /* Content Area */
 .content {
     flex: 1;
-    padding: 0 1rem;
+    padding: 0 1rem 1rem; /* Added bottom padding */
     display: flex;
     flex-direction: column;
 }
@@ -893,12 +894,11 @@ body {
 
 /* Submit Button - Sticky at Bottom */
 .submit-area {
-    padding: 0.75rem 1rem;
+    padding: 1.5rem 1rem 2rem; /* Extra bottom padding for safety */
     border-top: 1px solid var(--glass-border);
     margin-top: auto;
     background: var(--bg-black);
-    position: sticky;
-    bottom: 0;
+    position: relative; /* Changed from sticky */
     z-index: 100;
 }
 
